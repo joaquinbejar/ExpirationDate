@@ -1,0 +1,57 @@
+[package]
+name = "expiration_date"
+version = "0.1.0"
+edition = "2024"
+authors = ["Joaquin Bejar <jb@taunais.com>"]
+description = "A standalone crate for handling financial instrument expiration dates with support for days-based and datetime-based representations."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/joaquinbejar/ExpirationDate"
+homepage = "https://github.com/joaquinbejar/ExpirationDate"
+keywords = ["finance", "options", "expiration", "date"]
+categories = ["finance", "date-and-time"]
+
+[features]
+default = []
+utoipa = ["dep:utoipa"]
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+positive = { version = "0.3", features = ["utoipa"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+rust_decimal = { version = "1.39", features = ["maths", "serde"] }
+rust_decimal_macros = { version = "1.39" }
+thiserror = { version = "2.0" }
+tracing = { version = "0.1" }
+utoipa = { version = "5.4", features = ["chrono", "decimal"], optional = true }
+
+[dev-dependencies]
+serde_json = { version = "1.0" }
+
+[lib]
+name = "expiration_date"
+path = "src/lib.rs"
+
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "warn"
+needless_collect = "warn"
+unnecessary_to_owned = "warn"
+clone_on_ref_ptr = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+
+[profile.release]
+overflow-checks = true
+lto = "thin"
+codegen-units = 1
+
+[profile.dev]
+overflow-checks = true

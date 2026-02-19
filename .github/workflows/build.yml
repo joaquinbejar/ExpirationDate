@@ -1,0 +1,97 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTUP_MAX_RETRIES: 3
+  RUSTUP_UPDATE_ROOT: https://static.rust-lang.org/rustup
+  RUSTUP_DIST_SERVER: https://static.rust-lang.org
+  CARGO_NET_RETRY: 3
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+          - os: ubuntu-latest
+
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Network diagnostics
+        run: |
+          echo "Testing network connectivity..."
+          ping -c 3 static.rust-lang.org || echo "Ping failed, but continuing..."
+          curl -I https://static.rust-lang.org/rustup/release-stable.toml || echo "Curl test failed, but continuing..."
+          
+      - name: Install Rust with retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --component rustfmt --component clippy
+            source ~/.cargo/env
+            rustup --version
+            cargo --version
+            
+      - name: Setup Rust environment
+        run: |
+          source ~/.cargo/env
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup component add rustfmt clippy
+          
+      - name: Fallback Rust installation
+        if: failure()
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          
+      - name: Verify Rust installation
+        run: |
+          rustc --version
+          cargo --version
+          rustfmt --version
+          cargo clippy --version
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install dependencies
+        run: |
+          if [ "${{ matrix.container }}" = "archlinux:latest" ]; then
+            pacman -Syu --noconfirm make fontconfig pkgconf gcc
+          elif [ "${{ runner.os }}" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y make libfontconfig1-dev pkg-config build-essential
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            brew install make fontconfig pkg-config gcc
+          fi
+
+      - name: Build
+        run: make build
