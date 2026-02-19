@@ -29,6 +29,7 @@
 //! ```
 
 pub mod error;
+pub mod prelude;
 
 use crate::error::ExpirationDateError;
 use chrono::{DateTime, Duration, NaiveDate, NaiveDateTime, Utc};
@@ -41,9 +42,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-
-/// Standard number of days in a year used for annualization calculations.
-pub const DAYS_IN_A_YEAR: f64 = 365.0;
 
 /// Small decimal value used for equality comparisons between expiration dates.
 pub const EPSILON: Decimal = dec!(1e-16);
@@ -157,7 +155,7 @@ impl ExpirationDate {
     /// ```
     pub fn get_years(&self) -> Result<Positive, ExpirationDateError> {
         let days = self.get_days()?;
-        let years = days.to_f64() / DAYS_IN_A_YEAR;
+        let years = days.to_f64() / positive::constants::DAYS_IN_A_YEAR.to_f64();
         Positive::new(years).map_err(|e| ExpirationDateError::ConversionError {
             from_type: "f64".to_string(),
             to_type: "Positive".to_string(),
@@ -282,6 +280,11 @@ impl ExpirationDate {
     /// - If `use_fixed_time` is `false`: uses reference datetime + days, or current time + days.
     ///
     /// For `ExpirationDate::DateTime`: returns the stored datetime directly.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ExpirationDateError` if the time conversion fails (e.g., invalid
+    /// hour/minute combination for the fixed time calculation).
     pub fn get_date_with_options(
         &self,
         use_fixed_time: bool,
@@ -506,7 +509,7 @@ impl ExpirationDate {
 
 impl Default for ExpirationDate {
     fn default() -> Self {
-        ExpirationDate::Days(Positive::new_decimal(dec!(365.0)).expect("365.0 is a valid positive"))
+        ExpirationDate::Days(positive::constants::DAYS_IN_A_YEAR)
     }
 }
 
@@ -666,6 +669,7 @@ impl<'de> Deserialize<'de> for ExpirationDate {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 mod tests_expiration_date {
     use super::*;
     use chrono::Duration;
@@ -761,6 +765,7 @@ mod tests_expiration_date {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 mod tests_formatting {
     use super::*;
     use chrono::{Duration, TimeZone};
@@ -784,6 +789,7 @@ mod tests_formatting {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 mod tests_from_string {
     use super::*;
 
@@ -847,6 +853,7 @@ mod tests_from_string {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 mod tests_serialization {
     use super::*;
     use chrono::{TimeZone, Utc};
@@ -932,6 +939,7 @@ mod tests_serialization {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 mod tests_hash {
     use super::*;
     use chrono::{Duration, TimeZone};
@@ -1022,6 +1030,7 @@ mod tests_hash {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 mod tests_comparisons {
     use super::*;
 
