@@ -2,14 +2,14 @@
 //!
 //! A high-performance financial instrument expiration date management library.
 
+pub mod conventions;
 pub mod error;
 pub mod prelude;
-pub mod conventions;
 #[cfg(test)]
 mod tests;
 
+use crate::conventions::{Actual365Fixed, DayCount};
 use crate::error::ExpirationDateError;
-use crate::conventions::{DayCount, Actual365Fixed};
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use positive::Positive;
 use positive::constants::DAYS_IN_A_YEAR;
@@ -86,10 +86,13 @@ impl ExpirationDate {
     ///
     /// Returns [ExpirationDateError::ConversionError] if numeric conversion fails.
     #[inline]
-    pub fn get_years_with_convention<C: DayCount>(&self, convention: C) -> Result<Positive, ExpirationDateError> {
+    pub fn get_years_with_convention<C: DayCount>(
+        &self,
+        convention: C,
+    ) -> Result<Positive, ExpirationDateError> {
         let now = Utc::now();
         let target_date = self.get_date()?;
-        
+
         if target_date <= now {
             return Ok(Positive::ZERO);
         }
@@ -121,7 +124,7 @@ impl ExpirationDate {
                 let now = Utc::now();
                 let duration = dt.signed_duration_since(now);
                 let num_days = duration.num_seconds() as f64 / 86400.0;
-                
+
                 if num_days <= 0.0 {
                     return Ok(Positive::ZERO);
                 }
@@ -130,7 +133,7 @@ impl ExpirationDate {
         }
     }
 
-    /// Resolves expiration to an absolute [DateTime<Utc>].
+    /// Resolves expiration to an absolute [`DateTime<Utc>`].
     ///
     /// # Errors
     ///
@@ -145,16 +148,23 @@ impl ExpirationDate {
     /// # Errors
     ///
     /// Returns [ExpirationDateError::InvalidDateTime] if options lead to an invalid state.
-    pub fn get_date_with_options(&self, use_fixed_time: bool) -> Result<DateTime<Utc>, ExpirationDateError> {
+    pub fn get_date_with_options(
+        &self,
+        use_fixed_time: bool,
+    ) -> Result<DateTime<Utc>, ExpirationDateError> {
         match self {
             Self::Days(days) => {
                 let base = if use_fixed_time {
-                    Utc::now().date_naive().and_hms_opt(18, 30, 0)
-                        .ok_or_else(|| ExpirationDateError::InvalidDateTime("Time construction error".into()))?
+                    Utc::now()
+                        .date_naive()
+                        .and_hms_opt(18, 30, 0)
+                        .ok_or_else(|| {
+                            ExpirationDateError::InvalidDateTime("Time construction error".into())
+                        })?
                 } else {
                     Utc::now().naive_utc()
                 };
-                
+
                 let base_dt = DateTime::<Utc>::from_naive_utc_and_offset(base, Utc);
                 let days_i64 = (*days).to_i64();
                 Ok(base_dt + Duration::days(days_i64))
@@ -174,22 +184,32 @@ impl ExpirationDate {
             let month = s[4..6].parse::<u32>()?;
             let day = s[6..8].parse::<u32>()?;
 
-            if let Some(ndt) = NaiveDate::from_ymd_opt(year, month, day).and_then(|nd| nd.and_hms_opt(23, 59, 59)) {
-                return Ok(Self::DateTime(DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc)));
+            if let Some(ndt) =
+                NaiveDate::from_ymd_opt(year, month, day).and_then(|nd| nd.and_hms_opt(23, 59, 59))
+            {
+                return Ok(Self::DateTime(DateTime::<Utc>::from_naive_utc_and_offset(
+                    ndt, Utc,
+                )));
             }
         }
 
         if let Ok(date) = NaiveDate::parse_from_str(s, "%Y-%m-%d") {
-            let dt = date.and_hms_opt(18, 30, 0)
+            let dt = date
+                .and_hms_opt(18, 30, 0)
                 .ok_or_else(|| ExpirationDateError::InvalidDateTime("ISO parse failed".into()))?;
-            return Ok(Self::DateTime(DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc)));
+            return Ok(Self::DateTime(DateTime::<Utc>::from_naive_utc_and_offset(
+                dt, Utc,
+            )));
         }
 
         if let Ok(days) = s.parse::<Positive>() {
             return Ok(Self::Days(days));
         }
 
-        Err(ExpirationDateError::ParseError(format!("Unsupported format: {}", s)))
+        Err(ExpirationDateError::ParseError(format!(
+            "Unsupported format: {}",
+            s
+        )))
     }
 }
 
@@ -211,14 +231,16 @@ impl fmt::Display for ExpirationDate {
 
 impl Serialize for ExpirationDate {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
+    where
+        S: Serializer,
+    {
         use serde::ser::SerializeMap;
         match self {
             Self::Days(days) => {
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry("days", &days.to_f64())?;
                 map.end()
-            },
+            }
             Self::DateTime(dt) => {
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry("datetime", &dt.format("%Y-%m-%dT%H:%M:%SZ").to_string())?;
@@ -230,25 +252,36 @@ impl Serialize for ExpirationDate {
 
 impl<'de> Deserialize<'de> for ExpirationDate {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer<'de> {
-        use serde::de::{Visitor, MapAccess};
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::{MapAccess, Visitor};
 
         struct ExpirationVisitor;
         impl<'de> Visitor<'de> for ExpirationVisitor {
             type Value = ExpirationDate;
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result { f.write_str("expiration object") }
-            fn visit_map<V>(self, mut map: V) -> Result<ExpirationDate, V::Error> where V: MapAccess<'de> {
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("expiration object")
+            }
+            fn visit_map<V>(self, mut map: V) -> Result<ExpirationDate, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
                 let mut days = None;
                 let mut dt = None;
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
                         "days" => days = Some(map.next_value::<f64>()?),
                         "datetime" => dt = Some(map.next_value::<String>()?),
-                        _ => { let _ = map.next_value::<serde::de::IgnoredAny>()?; }
+                        _ => {
+                            let _ = map.next_value::<serde::de::IgnoredAny>()?;
+                        }
                     }
                 }
                 match (days, dt) {
-                    (Some(d), _) => Ok(ExpirationDate::Days(Positive::new(d).map_err(serde::de::Error::custom)?)),
+                    (Some(d), _) => Ok(ExpirationDate::Days(
+                        Positive::new(d).map_err(serde::de::Error::custom)?,
+                    )),
                     (_, Some(t)) => {
                         let parsed = DateTime::parse_from_rfc3339(&t)
                             .map_err(serde::de::Error::custom)?
