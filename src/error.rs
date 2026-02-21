@@ -1,56 +1,56 @@
-//! # Error Module
-//!
-//! Provides error types for expiration date operations including parsing,
-//! conversion, and date calculation failures.
+//! Unified error handling for ExpirationDate.
 
-use thiserror::Error;
+use std::fmt;
+use std::error::Error;
 
-/// Represents errors that can occur during expiration date operations.
-///
-/// This enum covers parsing failures, conversion issues, and invalid
-/// date/time values encountered when working with `ExpirationDate`.
-#[derive(Error, Debug)]
+/// Error types for expiration date operations.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExpirationDateError {
-    /// Error when parsing a string into an expiration date.
-    #[error("parse error: {0}")]
+    /// Failed to parse a string into an ExpirationDate.
     ParseError(String),
-
-    /// Error when converting between expiration date representations.
-    #[error("conversion error from {from_type} to {to_type}: {reason}")]
-    ConversionError {
-        /// The source type being converted from.
-        from_type: String,
-        /// The destination type being converted to.
-        to_type: String,
-        /// Detailed explanation of why the conversion failed.
-        reason: String,
+    /// Failure during numeric or date conversion.
+    ConversionError { 
+        from_type: String, 
+        to_type: String, 
+        reason: String 
     },
-
-    /// Error when a date or time value is invalid.
-    #[error("invalid date/time: {0}")]
+    /// Provided datetime is invalid for the context.
     InvalidDateTime(String),
-
-    /// Error originating from the positive crate.
-    #[error(transparent)]
-    PositiveError(#[from] positive::PositiveError),
-
-    /// Error originating from chrono parsing.
-    #[error(transparent)]
-    ChronoParseError(#[from] chrono::ParseError),
-
-    /// Error when parsing an integer fails.
-    #[error(transparent)]
-    ParseIntError(#[from] std::num::ParseIntError),
+    /// Error parsing integers from string formats.
+    ParseIntError,
 }
 
-impl From<String> for ExpirationDateError {
-    fn from(msg: String) -> Self {
-        ExpirationDateError::ParseError(msg)
+impl fmt::Display for ExpirationDateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ParseError(s) => write!(f, "Parse error: {}", s),
+            Self::ConversionError { from_type, to_type, reason } => {
+                write!(f, "Conversion error from {} to {}: {}", from_type, to_type, reason)
+            },
+            Self::InvalidDateTime(s) => write!(f, "Invalid datetime: {}", s),
+            Self::ParseIntError => write!(f, "Failed to parse integer component"),
+        }
     }
 }
 
-impl From<&str> for ExpirationDateError {
-    fn from(msg: &str) -> Self {
-        ExpirationDateError::ParseError(msg.to_string())
+impl Error for ExpirationDateError {}
+
+impl From<std::num::ParseIntError> for ExpirationDateError {
+    #[inline]
+    #[cold]
+    fn from(_: std::num::ParseIntError) -> Self {
+        Self::ParseIntError
+    }
+}
+
+impl From<positive::error::PositiveError> for ExpirationDateError {
+    #[inline]
+    #[cold]
+    fn from(e: positive::error::PositiveError) -> Self {
+        Self::ConversionError {
+            from_type: "f64".into(),
+            to_type: "Positive".into(),
+            reason: e.to_string(),
+        }
     }
 }
