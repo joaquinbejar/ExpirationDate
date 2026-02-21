@@ -1,14 +1,14 @@
 [package]
 name = "expiration_date"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 authors = ["Joaquin Bejar <jb@taunais.com>"]
-description = "A standalone crate for handling financial instrument expiration dates with support for days-based and datetime-based representations."
+description = "A professional financial instrument expiration date management library with support for standard day count conventions."
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/joaquinbejar/ExpirationDate"
 homepage = "https://github.com/joaquinbejar/ExpirationDate"
-keywords = ["finance", "options", "expiration", "date"]
+keywords = ["finance", "options", "expiration", "date", "hft"]
 categories = ["finance", "date-and-time"]
 
 [features]
