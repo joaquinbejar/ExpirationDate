@@ -1,8 +1,4 @@
 //! Financial conventions for day counting and business days.
-//!
-//! # Invariants
-//! - Year fractions are always computed as non-negative where start <= end.
-//! - Day counts follow ISDA or specific market standards.
 
 use crate::error::ExpirationDateError;
 use chrono::{DateTime, Datelike, Utc};
@@ -12,12 +8,17 @@ pub trait DayCount: Copy + Send + Sync {
     /// Returns the year fraction between start and end dates.
     ///
     /// # Errors
-    /// Returns [ExpirationDateError::ConversionError] if numeric overflow occurs.
-    #[must_use]
+    ///
+    /// This function will return an error if the day count calculation fails
+    /// or if there is a numeric overflow during conversion.
     fn year_fraction(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError>;
     
     /// Returns the number of days between start and end dates according to the convention.
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the dates are invalid or if the
+    /// calculated number of days exceeds the numeric capacity.
     fn day_count(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError>;
 }
 
@@ -26,17 +27,15 @@ pub trait DayCount: Copy + Send + Sync {
 pub struct Actual360;
 
 impl DayCount for Actual360 {
-    /// Computes fraction as (Actual Days / 360).
     #[inline]
-    #[must_use]
     fn year_fraction(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError> {
         Ok(self.day_count(start, end)? / 360.0)
     }
 
     #[inline]
-    #[must_use]
     fn day_count(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError> {
-        Ok(end.signed_duration_since(*start).num_days() as f64)
+        let duration = end.signed_duration_since(*start);
+        Ok(duration.num_days() as f64)
     }
 }
 
@@ -45,17 +44,15 @@ impl DayCount for Actual360 {
 pub struct Actual365Fixed;
 
 impl DayCount for Actual365Fixed {
-    /// Computes fraction as (Actual Days / 365).
     #[inline]
-    #[must_use]
     fn year_fraction(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError> {
         Ok(self.day_count(start, end)? / 365.0)
     }
 
     #[inline]
-    #[must_use]
     fn day_count(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError> {
-        Ok(end.signed_duration_since(*start).num_days() as f64)
+        let duration = end.signed_duration_since(*start);
+        Ok(duration.num_days() as f64)
     }
 }
 
@@ -65,14 +62,10 @@ pub struct Thirty360US;
 
 impl DayCount for Thirty360US {
     #[inline]
-    #[must_use]
     fn year_fraction(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError> {
         Ok(self.day_count(start, end)? / 360.0)
     }
 
-    /// # Errors
-    /// Returns [ExpirationDateError::ConversionError] if components overflow i64.
-    #[must_use]
     fn day_count(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError> {
         let d1 = start.day().min(30) as i64;
         let mut d2 = end.day() as i64;

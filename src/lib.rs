@@ -1,22 +1,18 @@
 //! # ExpirationDate
 //!
 //! A high-performance financial instrument expiration date management library.
-//!
-//! Designed for low-latency quantitative finance systems, this crate provides
-//! type-safe mechanisms to handle contract expirations and time-to-maturity
-//! calculations using standard financial conventions.
-//!
-//! # Safety
-//! This library contains zero unsafe code and maintains a strict "no-panic" policy in production.
 
 pub mod error;
 pub mod prelude;
 pub mod conventions;
+#[cfg(test)]
+mod tests;
 
 use crate::error::ExpirationDateError;
 use crate::conventions::{DayCount, Actual365Fixed};
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use positive::Positive;
+use positive::constants::DAYS_IN_A_YEAR;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -28,17 +24,29 @@ use std::hash::{Hash, Hasher};
 pub const EPSILON: Decimal = dec!(1e-16);
 
 /// Represents the expiration of a financial instrument.
-///
-/// Supports relative (Days) and absolute (DateTime) specifications.
-/// Implements [Copy] for stack-allocation efficiency in hot loops.
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[must_use = "Financial results must be used to ensure correct pricing."]
 pub enum ExpirationDate {
     /// Relative expiration in positive fractional days.
     Days(Positive),
     /// Absolute expiration point in UTC.
     DateTime(DateTime<Utc>),
+}
+
+impl Hash for ExpirationDate {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Days(d) => {
+                state.write_u8(0);
+                d.hash(state);
+            }
+            Self::DateTime(dt) => {
+                state.write_u8(1);
+                dt.hash(state);
+            }
+        }
+    }
 }
 
 impl PartialEq for ExpirationDate {
@@ -74,22 +82,10 @@ impl Ord for ExpirationDate {
 impl ExpirationDate {
     /// Calculates the time to expiration in years using a specific day count convention.
     ///
-    /// # Invariants
-    /// - If the target date is in the past relative to [Utc::now], returns [Positive::ZERO].
-    ///
     /// # Errors
-    /// Returns [ExpirationDateError] if calculation or conversion fails.
     ///
-    /// # Examples
-    /// ```
-    /// use expiration_date::ExpirationDate;
-    /// use expiration_date::conventions::Actual360;
-    /// use positive::Positive;
-    /// 
-    /// let exp = ExpirationDate::Days(Positive::HUNDRED);
-    /// let years = exp.get_years_with_convention(Actual360).unwrap();
-    /// ```
-    #[must_use]
+    /// Returns [ExpirationDateError::ConversionError] if the internal conversion 
+    /// between date types or numeric representations fails.
     #[inline]
     pub fn get_years_with_convention<C: DayCount>(&self, convention: C) -> Result<Positive, ExpirationDateError> {
         let now = Utc::now();
@@ -104,7 +100,10 @@ impl ExpirationDate {
     }
 
     /// Calculates years using standard Actual/365 Fixed convention.
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// Returns [ExpirationDateError] if the underlying calculation fails.
     #[inline]
     pub fn get_years(&self) -> Result<Positive, ExpirationDateError> {
         self.get_years_with_convention(Actual365Fixed)
@@ -113,8 +112,8 @@ impl ExpirationDate {
     /// Returns the number of fractional days until expiration.
     ///
     /// # Errors
-    /// Returns error if current system time cannot be compared with expiration.
-    #[must_use]
+    ///
+    /// Returns [ExpirationDateError::ConversionError] if numeric conversion fails.
     #[inline]
     pub fn get_days(&self) -> Result<Positive, ExpirationDateError> {
         match self {
@@ -133,7 +132,10 @@ impl ExpirationDate {
     }
 
     /// Resolves expiration to an absolute [DateTime<Utc>].
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// Returns [ExpirationDateError::InvalidDateTime] if base time calculation fails.
     #[inline]
     pub fn get_date(&self) -> Result<DateTime<Utc>, ExpirationDateError> {
         self.get_date_with_options(false)
@@ -141,9 +143,9 @@ impl ExpirationDate {
 
     /// Resolves datetime with advanced base-time options.
     ///
-    /// # Arguments
-    /// - `use_fixed_time`: If true, base is today at 18:30 UTC for relative Days.
-    #[must_use]
+    /// # Errors
+    ///
+    /// Returns [ExpirationDateError::InvalidDateTime] if time is invalid.
     pub fn get_date_with_options(&self, use_fixed_time: bool) -> Result<DateTime<Utc>, ExpirationDateError> {
         match self {
             Self::Days(days) => {
@@ -162,45 +164,40 @@ impl ExpirationDate {
         }
     }
 
-    /// Parse expiration from string using HFT-friendly formats (YYYYMMDD).
+    /// Parse expiration from string.
     ///
     /// # Errors
-    /// Returns [ExpirationDateError::ParseError] if format is unrecognized.
-    #[must_use]
+    ///
+    /// Returns [ExpirationDateError::ParseError] if format is unknown.
     pub fn from_string(s: &str) -> Result<Self, ExpirationDateError> {
-        // Try direct day count
-        if let Ok(days) = s.parse::<Positive>() {
-            return Ok(Self::Days(days));
-        }
-
-        // Optimized YYYYMMDD check
         if s.len() == 8 && s.chars().all(|c| c.is_ascii_digit()) {
             let year = s[0..4].parse::<i32>()?;
             let month = s[4..6].parse::<u32>()?;
             let day = s[6..8].parse::<u32>()?;
 
-            if let Some(nd) = NaiveDate::from_ymd_opt(year, month, day) {
-                if let Some(ndt) = nd.and_hms_opt(23, 59, 59) {
-                    return Ok(Self::DateTime(DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc)));
-                }
+            if let Some(ndt) = NaiveDate::from_ymd_opt(year, month, day).and_then(|nd| nd.and_hms_opt(23, 59, 59)) {
+                return Ok(Self::DateTime(DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc)));
             }
         }
 
-        // Standard ISO-8601
         if let Ok(date) = NaiveDate::parse_from_str(s, "%Y-%m-%d") {
             let dt = date.and_hms_opt(18, 30, 0)
                 .ok_or_else(|| ExpirationDateError::InvalidDateTime("ISO parse failed".into()))?;
             return Ok(Self::DateTime(DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc)));
         }
 
-        Err(ExpirationDateError::ParseError(s.to_string()))
+        if let Ok(days) = s.parse::<Positive>() {
+            return Ok(Self::Days(days));
+        }
+
+        Err(ExpirationDateError::ParseError(format!("Unsupported format: {}", s)))
     }
 }
 
 impl Default for ExpirationDate {
     #[inline]
     fn default() -> Self {
-        Self::Days(Positive::THREE_HUNDRED_SIXTY_FIVE)
+        Self::Days(DAYS_IN_A_YEAR)
     }
 }
 
