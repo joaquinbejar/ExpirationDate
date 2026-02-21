@@ -9,20 +9,18 @@ pub trait DayCount: Copy + Send + Sync {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the day count calculation fails
-    /// or if there is a numeric overflow during conversion.
+    /// Returns [ExpirationDateError::ConversionError] if numeric overflow occurs.
     fn year_fraction(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError>;
     
     /// Returns the number of days between start and end dates according to the convention.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the dates are invalid or if the
-    /// calculated number of days exceeds the numeric capacity.
+    /// Returns [ExpirationDateError::ParseIntError] if the calculation overflows.
     fn day_count(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError>;
 }
 
-/// Actual/360 day count convention. Commonly used in money markets.
+/// Actual/360 day count convention.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Actual360;
 
@@ -39,7 +37,7 @@ impl DayCount for Actual360 {
     }
 }
 
-/// Actual/365 Fixed day count convention. Standard for many derivatives.
+/// Actual/365 Fixed day count convention.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Actual365Fixed;
 

@@ -84,8 +84,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     ///
-    /// Returns [ExpirationDateError::ConversionError] if the internal conversion 
-    /// between date types or numeric representations fails.
+    /// Returns [ExpirationDateError::ConversionError] if numeric conversion fails.
     #[inline]
     pub fn get_years_with_convention<C: DayCount>(&self, convention: C) -> Result<Positive, ExpirationDateError> {
         let now = Utc::now();
@@ -103,7 +102,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     ///
-    /// Returns [ExpirationDateError] if the underlying calculation fails.
+    /// Returns [ExpirationDateError] if calculation fails.
     #[inline]
     pub fn get_years(&self) -> Result<Positive, ExpirationDateError> {
         self.get_years_with_convention(Actual365Fixed)
@@ -113,7 +112,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     ///
-    /// Returns [ExpirationDateError::ConversionError] if numeric conversion fails.
+    /// Returns [ExpirationDateError::ConversionError] if duration calculation fails.
     #[inline]
     pub fn get_days(&self) -> Result<Positive, ExpirationDateError> {
         match self {
@@ -135,7 +134,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     ///
-    /// Returns [ExpirationDateError::InvalidDateTime] if base time calculation fails.
+    /// Returns [ExpirationDateError::InvalidDateTime] if base time construction fails.
     #[inline]
     pub fn get_date(&self) -> Result<DateTime<Utc>, ExpirationDateError> {
         self.get_date_with_options(false)
@@ -145,7 +144,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     ///
-    /// Returns [ExpirationDateError::InvalidDateTime] if time is invalid.
+    /// Returns [ExpirationDateError::InvalidDateTime] if options lead to an invalid state.
     pub fn get_date_with_options(&self, use_fixed_time: bool) -> Result<DateTime<Utc>, ExpirationDateError> {
         match self {
             Self::Days(days) => {
@@ -168,7 +167,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     ///
-    /// Returns [ExpirationDateError::ParseError] if format is unknown.
+    /// Returns [ExpirationDateError::ParseError] if format is unsupported.
     pub fn from_string(s: &str) -> Result<Self, ExpirationDateError> {
         if s.len() == 8 && s.chars().all(|c| c.is_ascii_digit()) {
             let year = s[0..4].parse::<i32>()?;
