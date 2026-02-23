@@ -29,7 +29,7 @@ pub const EPSILON: Decimal = dec!(1e-16);
 /// Represents the expiration of a financial instrument.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[must_use]
+#[must_use = "Financial expiration results must be used for correct pricing calculations."]
 pub enum ExpirationDate {
     /// Relative expiration in positive fractional days.
     Days(Positive),
@@ -97,7 +97,7 @@ impl ExpirationDate {
     }
 
     /// Gets the current reference datetime.
-    #[must_use]
+    #[must_use = "Retrieving the reference datetime has no effect if the result is ignored."]
     pub fn get_reference_datetime() -> Option<DateTime<Utc>> {
         Self::REFERENCE_DATETIME.with(|cell| *cell.borrow())
     }
@@ -106,6 +106,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     /// Returns [ExpirationDateError] if calculation fails.
+    #[must_use = "Calculated years must be used to ensure valid financial models."]
     pub fn get_years_with_convention<C: DayCount>(&self, convention: C) -> Result<Positive, ExpirationDateError> {
         let now = Utc::now();
         let target_date = self.get_date_with_base(now)?;
@@ -114,10 +115,11 @@ impl ExpirationDate {
         Positive::new(fraction).map_err(Into::into)
     }
 
-    /// Calculates years until expiration.
+    /// Calculates years until expiration using standard Actual/365 Fixed.
     ///
     /// # Errors
     /// Returns [ExpirationDateError] if calculation fails.
+    #[must_use = "Calculated years must be used to ensure valid financial models."]
     #[inline]
     pub fn get_years(&self) -> Result<Positive, ExpirationDateError> {
         match self {
@@ -132,7 +134,9 @@ impl ExpirationDate {
     /// Returns the number of fractional days until expiration.
     ///
     /// # Errors
-    /// Returns [ExpirationDateError] if duration calculation fails.
+    /// Returns [ExpirationDateError] if conversion to Positive fails.
+    #[must_use = "Calculated days must be used to ensure valid financial models."]
+    #[inline]
     pub fn get_days(&self) -> Result<Positive, ExpirationDateError> {
         match self {
             Self::Days(days) => Ok(*days),
@@ -150,6 +154,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     /// Returns [ExpirationDateError] if construction fails.
+    #[must_use = "Resolved date must be used for settlement or further calculations."]
     #[inline]
     pub fn get_date(&self) -> Result<DateTime<Utc>, ExpirationDateError> {
         self.get_date_with_options(false)
@@ -169,6 +174,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     /// Returns [ExpirationDateError] if the construction fails.
+    #[must_use = "Resolved date must be used for settlement or further calculations."]
     pub fn get_date_with_options(&self, use_fixed_time: bool) -> Result<DateTime<Utc>, ExpirationDateError> {
         if use_fixed_time {
             let today = Utc::now().date_naive();
@@ -186,6 +192,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     /// Returns error if the date cannot be resolved.
+    #[must_use = "Formatted string should be consumed for display or reporting."]
     pub fn get_date_string(&self) -> Result<String, ExpirationDateError> {
         let date = self.get_date_with_options(true)?;
         Ok(date.format("%Y-%m-%d").to_string())
@@ -194,11 +201,9 @@ impl ExpirationDate {
     /// Parse expiration from string using multiple formats.
     ///
     /// # Errors
-    /// Returns [ExpirationDateError::ParseError] if format is unknown.
+    /// Returns [ExpirationDateError::ParseError] if format matches no known pattern.
+    #[must_use = "Parsed expiration result must be used."]
     pub fn from_string(s: &str) -> Result<Self, ExpirationDateError> {
-        if let Ok(days) = s.parse::<Positive>() {
-            return Ok(Self::Days(days));
-        }
         let formats = ["%Y-%m-%d", "%d-%m-%Y", "%d %b %Y", "%d-%b-%Y", "%Y%m%d"];
         for fmt in formats {
             if let Ok(date) = NaiveDate::parse_from_str(s, fmt) {
@@ -209,6 +214,9 @@ impl ExpirationDate {
         if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
             return Ok(Self::DateTime(dt.with_timezone(&Utc)));
         }
+        if let Ok(days) = s.parse::<Positive>() {
+            return Ok(Self::Days(days));
+        }
         Err(ExpirationDateError::ParseError(s.to_string()))
     }
 
@@ -216,6 +224,7 @@ impl ExpirationDate {
     ///
     /// # Errors
     /// Returns error if parsing or conversion fails.
+    #[must_use = "Parsed days result must be used."]
     pub fn from_string_to_days(s: &str) -> Result<Self, ExpirationDateError> {
         let exp = Self::from_string(s)?;
         Ok(Self::Days(exp.get_days()?))

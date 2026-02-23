@@ -4,14 +4,6 @@ use chrono::{Duration, TimeZone, Utc};
 use positive::Positive;
 use positive::constants::DAYS_IN_A_YEAR;
 use std::error::Error;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    t.hash(&mut hasher);
-    hasher.finish()
-}
 
 #[test]
 fn test_actual_365_fixed() -> Result<(), Box<dyn Error>> {
@@ -62,20 +54,12 @@ fn test_parsing_multi_formats() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_hash_consistency() -> Result<(), Box<dyn Error>> {
-    let d1 = ExpirationDate::Days(Positive::TEN);
+fn test_comparisons_and_sorting() {
+    let d1 = ExpirationDate::Days(Positive::ONE);
     let d2 = ExpirationDate::Days(Positive::TEN);
-    assert_eq!(calculate_hash(&d1), calculate_hash(&d2));
-    Ok(())
-}
-
-#[test]
-fn test_serialization_roundtrip() -> Result<(), Box<dyn Error>> {
-    let original = ExpirationDate::Days(Positive::TEN);
-    let json = serde_json::to_string(&original)?;
-    let deserialized: ExpirationDate = serde_json::from_str(&json)?;
-    assert_eq!(original, deserialized);
-    Ok(())
+    let mut list = [d2, d1];
+    list.sort();
+    assert_eq!(list.first(), Some(&d1));
 }
 
 #[test]

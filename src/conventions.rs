@@ -8,13 +8,13 @@ pub trait DayCount: Copy + Send + Sync {
     /// Returns the year fraction between start and end dates.
     ///
     /// # Errors
-    /// Returns [ExpirationDateError::ArithmeticOverflow] if the calculation fails.
+    /// Returns [ExpirationDateError::ArithmeticOverflow] if calculation fails.
     fn year_fraction(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError>;
     
     /// Returns the number of days between start and end dates.
     ///
     /// # Errors
-    /// Returns [ExpirationDateError::ArithmeticOverflow] if the calculation fails.
+    /// Returns [ExpirationDateError::ArithmeticOverflow] if calculation fails.
     fn day_count(&self, start: &DateTime<Utc>, end: &DateTime<Utc>) -> Result<f64, ExpirationDateError>;
 }
 
