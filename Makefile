@@ -1,13 +1,13 @@
 # =============================================================================
-# Makefile for OTC RFQ Engine
-# High-performance OTC Request-for-Quote engine
+# Makefile for expiration_date
+# Standalone Rust crate for financial-instrument expiration dates
 # =============================================================================
 
 # Detect current branch
 CURRENT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
 # Project name for packaging
-PROJECT_NAME := common-rs
+PROJECT_NAME := expiration_date
 
 # =============================================================================
 # Default target
@@ -134,11 +134,21 @@ readme:
 	cargo readme > README.md.new
 	@echo "New README generated as README.md.new"
 
-.PHONY: publish
-publish:
-	@echo "📦 Publishing to crates.io..."
+.PHONY: publish-dry
+publish-dry:
+	@echo "📦 Dry-run publish to crates.io..."
 	cargo publish --dry-run
-	@echo "Dry run complete. Run 'cargo publish' to actually publish."
+
+.PHONY: publish
+publish: publish-dry
+	@echo ""
+	@printf "Publish %s to crates.io? [y/N] " "$(PROJECT_NAME)"; \
+	read yn; \
+	if [ "$$yn" = "y" ] || [ "$$yn" = "Y" ]; then \
+	  cargo publish; \
+	else \
+	  echo "Aborted."; \
+	fi
 
 .PHONY: package
 package:
@@ -399,7 +409,8 @@ help:
 	@echo "  make doc-check       Check for missing docs via clippy"
 	@echo "  make create-doc      Generate internal docs"
 	@echo "  make readme          Regenerate README using cargo-readme"
-	@echo "  make publish         Prepare and publish crate to crates.io"
+	@echo "  make publish-dry     Dry-run cargo publish"
+	@echo "  make publish         Dry-run, then prompt before real cargo publish"
 	@echo ""
 	@echo "📈 Coverage & Benchmarks:"
 	@echo "  make coverage        Generate code coverage report (XML)"
