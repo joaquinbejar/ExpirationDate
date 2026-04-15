@@ -1,14 +1,19 @@
+//! # Error Module
+//!
+//! Provides error types for expiration date operations including parsing,
+//! conversion, and date calculation failures.
+
 use thiserror::Error;
 
 /// Error types for expiration date operations.
 #[derive(Debug, Error)]
 pub enum ExpirationDateError {
     /// Failed to parse a string into an ExpirationDate.
-    #[error("Parse error: {0}")]
+    #[error("parse error: {0}")]
     ParseError(String),
 
     /// Failure during numeric or date conversion.
-    #[error("Conversion error from {from_type} to {to_type}: {reason}")]
+    #[error("conversion error from {from_type} to {to_type}: {reason}")]
     ConversionError {
         /// The source type of the conversion.
         from_type: String,
@@ -19,24 +24,24 @@ pub enum ExpirationDateError {
     },
 
     /// Provided datetime is invalid for the context.
-    #[error("Invalid datetime: {0}")]
+    #[error("invalid datetime: {0}")]
     InvalidDateTime(String),
 
     /// Error from the underlying Positive type.
-    #[error("Positive error: {0}")]
+    #[error("positive error: {0}")]
     PositiveError(#[from] positive::error::PositiveError),
 
     /// Error parsing dates using the chrono crate.
-    #[error("Chrono parse error: {0}")]
+    #[error("chrono parse error: {0}")]
     ChronoParseError(#[from] chrono::ParseError),
 
     /// Error parsing integers from strings.
-    #[error("Parse int error: {0}")]
+    #[error("parse int error: {0}")]
     ParseIntError(#[from] std::num::ParseIntError),
-    
+
     /// Numeric overflow during financial convention calculations.
-    #[error("Arithmetic overflow in convention calculation")]
-    ArithmeticOverflow,
+    #[error("arithmetic overflow: {0}")]
+    ArithmeticOverflow(String),
 }
 
 impl From<String> for ExpirationDateError {
