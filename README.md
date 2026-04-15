@@ -217,6 +217,13 @@ We welcome contributions to this project! If you would like to contribute, pleas
 4. Commit your changes and push your branch to your forked repository.
 5. Submit a pull request to the main repository.
 
+### Development
+
+- Run tests: `make test`
+- Lint: `make lint`
+- Format: `make fmt`
+- Run benchmarks: `make bench` (wraps `cargo bench --all-features`; Criterion benches live under `benches/`)
+
 If you have any questions, issues, or would like to provide feedback, please feel free to contact the project maintainer:
 
 
