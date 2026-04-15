@@ -7,17 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-15
+
 ### Added
 - Day count conventions module (`Actual360`, `Actual365Fixed`, `Thirty360US`) and `get_years_with_convention` API.
 - `ArithmeticOverflow(String)` variant on `ExpirationDateError` for checked arithmetic in conventions.
-- Comprehensive integration test suite under `tests/` (70 tests across 6 concern-focused files).
+- Thread-local `REFERENCE_DATETIME` with `set_reference_datetime` / `get_reference_datetime` accessors for deterministic testing.
+- Comprehensive integration test suite under `tests/` (70 tests across 6 concern-focused files) plus 5 proptest properties (1280 cases per run).
+- Criterion benchmarks for parser, conversion, and serde hot paths under `benches/`.
+- `CHANGELOG.md` (Keep a Changelog 1.1.0).
+- `.github/dependabot.yml` for cargo + github-actions weekly grouped updates.
+- `rust-version = "1.85"` MSRV declared in `Cargo.toml`.
+- `[package.metadata.docs.rs]` with `all-features=true` and `docsrs` cfg.
 - Module split: `src/{lib,parser,serde_impl,cmp,convert,error,prelude,conventions}.rs` for clearer review and faster incremental compile.
+- `make publish-dry` and `make publish` (with confirmation prompt) replace the misleading single `publish` target.
+- `make bench` target.
 
 ### Changed
 - `src/lib.rs` reduced from 502 to ~65 lines (enum + EPSILON + thread-local reference datetime).
 - Error messages lowercased to match project convention.
 - `Ord` impl uses 4-arm pattern to preserve antisymmetry when both sides error.
 - `Deserialize` rejects duplicate `days` / `datetime` fields explicitly.
+- Makefile project header references `expiration_date` (was a copy-pasted "OTC RFQ Engine").
 
 ### Fixed
 - Restored parse formats lost during early v0.2.0 work: `%Y-%m-%d %H:%M:%S %Z`, `... UTC`, `T15:29` (no seconds), `%d %B %Y`, `%d-%B-%Y`.
@@ -52,7 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hand-written `PartialEq` / `Eq` / `PartialOrd` / `Ord` / `Hash` with `EPSILON` tolerance.
 - Optional `utoipa` feature for OpenAPI schema generation.
 
-[Unreleased]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.2.0
 [0.1.2]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.1.2
 [0.1.1]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.1.1
 [0.1.0]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.1.0
