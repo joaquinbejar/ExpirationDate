@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! # ExpirationDate
 //!
 //! A professional high-performance financial instrument expiration date management library.
@@ -8,6 +9,10 @@
 //! focused submodules: [`cmp`] (hand-written `Hash` / `Eq` / `Ord`),
 //! [`convert`] (day/year accessors, `Display`, `Default`), [`parser`]
 //! (`from_string` and friends), and [`serde_impl`] (hand-written serde).
+//!
+//! ## Minimum Supported Rust Version
+//!
+//! `expiration_date` requires **Rust 1.85** or later (Edition 2024).
 
 /// Hand-written comparison and hashing impls for [`ExpirationDate`].
 pub mod cmp;
