@@ -1,56 +1,52 @@
-//! # Error Module
-//!
-//! Provides error types for expiration date operations including parsing,
-//! conversion, and date calculation failures.
-
 use thiserror::Error;
 
-/// Represents errors that can occur during expiration date operations.
-///
-/// This enum covers parsing failures, conversion issues, and invalid
-/// date/time values encountered when working with `ExpirationDate`.
-#[derive(Error, Debug)]
+/// Error types for expiration date operations.
+#[derive(Debug, Error)]
 pub enum ExpirationDateError {
-    /// Error when parsing a string into an expiration date.
-    #[error("parse error: {0}")]
+    /// Failed to parse a string into an ExpirationDate.
+    #[error("Parse error: {0}")]
     ParseError(String),
 
-    /// Error when converting between expiration date representations.
-    #[error("conversion error from {from_type} to {to_type}: {reason}")]
+    /// Failure during numeric or date conversion.
+    #[error("Conversion error from {from_type} to {to_type}: {reason}")]
     ConversionError {
-        /// The source type being converted from.
+        /// The source type of the conversion.
         from_type: String,
-        /// The destination type being converted to.
+        /// The target type of the conversion.
         to_type: String,
-        /// Detailed explanation of why the conversion failed.
+        /// The detailed reason for the failure.
         reason: String,
     },
 
-    /// Error when a date or time value is invalid.
-    #[error("invalid date/time: {0}")]
+    /// Provided datetime is invalid for the context.
+    #[error("Invalid datetime: {0}")]
     InvalidDateTime(String),
 
-    /// Error originating from the positive crate.
-    #[error(transparent)]
-    PositiveError(#[from] positive::PositiveError),
+    /// Error from the underlying Positive type.
+    #[error("Positive error: {0}")]
+    PositiveError(#[from] positive::error::PositiveError),
 
-    /// Error originating from chrono parsing.
-    #[error(transparent)]
+    /// Error parsing dates using the chrono crate.
+    #[error("Chrono parse error: {0}")]
     ChronoParseError(#[from] chrono::ParseError),
 
-    /// Error when parsing an integer fails.
-    #[error(transparent)]
+    /// Error parsing integers from strings.
+    #[error("Parse int error: {0}")]
     ParseIntError(#[from] std::num::ParseIntError),
+    
+    /// Numeric overflow during financial convention calculations.
+    #[error("Arithmetic overflow in convention calculation")]
+    ArithmeticOverflow,
 }
 
 impl From<String> for ExpirationDateError {
-    fn from(msg: String) -> Self {
-        ExpirationDateError::ParseError(msg)
+    fn from(s: String) -> Self {
+        Self::ParseError(s)
     }
 }
 
 impl From<&str> for ExpirationDateError {
-    fn from(msg: &str) -> Self {
-        ExpirationDateError::ParseError(msg.to_string())
+    fn from(s: &str) -> Self {
+        Self::ParseError(s.to_string())
     }
 }
