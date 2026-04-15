@@ -58,7 +58,8 @@ impl PartialEq for ExpirationDate {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         match (self.get_days(), other.get_days()) {
-            (Ok(s), Ok(o)) => (s.value() - o.value()).abs() < EPSILON,
+            (Ok(s), Ok(o)) => (s.to_dec() - o.to_dec()).abs() < EPSILON,
+            // If day conversion fails for either side, avoid silently treating it as zero.
             _ => false,
         }
     }
