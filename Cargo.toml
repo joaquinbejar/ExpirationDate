@@ -2,6 +2,7 @@
 name = "expiration_date"
 version = "0.2.0"
 edition = "2024"
+rust-version = "1.85"
 authors = ["Joaquin Bejar <jb@taunais.com>"]
 description = "A professional financial instrument expiration date management library with support for standard day count conventions."
 license = "MIT"
@@ -55,3 +56,7 @@ codegen-units = 1
 
 [profile.dev]
 overflow-checks = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

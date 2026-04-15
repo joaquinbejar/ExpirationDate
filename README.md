@@ -27,6 +27,10 @@ It supports two representations:
 This is particularly useful in quantitative finance applications where expiration dates
 need to be expressed either as days-to-expiration (DTE) or as specific calendar dates.
 
+### Minimum Supported Rust Version
+
+`expiration_date` requires **Rust 1.85** or later (Edition 2024).
+
 ### Features
 
 - **Dual Representation**: Express expirations as days remaining or absolute datetimes
