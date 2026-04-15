@@ -97,7 +97,7 @@ jobs:
       # UPLOAD CODE COVERAGE REPORT TO CODECOV.IO
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       - name: Upload coverage reports to Codecov.io
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           # Best-effort upload: Dependabot PRs cannot access secrets, so the
           # upload would otherwise fail with "Token required because branch
