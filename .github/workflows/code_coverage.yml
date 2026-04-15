@@ -42,7 +42,7 @@ jobs:
       
       # Robust Rust installation with retry strategy
       - name: Install Rust with retry
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
