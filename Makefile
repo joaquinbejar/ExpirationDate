@@ -183,8 +183,13 @@ check-cargo-criterion:
 	@command -v cargo-criterion > /dev/null || cargo install cargo-criterion
 
 .PHONY: bench
-bench: check-cargo-criterion
+bench:
 	@echo "⚡ Running benchmarks..."
+	cargo bench --all-features
+
+.PHONY: bench-criterion
+bench-criterion: check-cargo-criterion
+	@echo "⚡ Running benchmarks via cargo-criterion..."
 	cargo criterion --output-format=quiet
 
 .PHONY: bench-show
@@ -416,7 +421,8 @@ help:
 	@echo "  make coverage        Generate code coverage report (XML)"
 	@echo "  make coverage-html   Generate HTML coverage report"
 	@echo "  make open-coverage   Open HTML report"
-	@echo "  make bench           Run benchmarks using Criterion"
+	@echo "  make bench           Run benchmarks via cargo bench --all-features"
+	@echo "  make bench-criterion Run benchmarks via cargo-criterion"
 	@echo "  make bench-show      Open benchmark report"
 	@echo "  make bench-save      Save benchmark history snapshot"
 	@echo "  make bench-compare   Compare benchmark runs"

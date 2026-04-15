@@ -30,10 +30,23 @@ utoipa = { version = "5.4", features = ["chrono", "decimal"], optional = true }
 [dev-dependencies]
 serde_json = { version = "1.0" }
 proptest = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [lib]
 name = "expiration_date"
 path = "src/lib.rs"
+
+[[bench]]
+name = "parser"
+harness = false
+
+[[bench]]
+name = "conversion"
+harness = false
+
+[[bench]]
+name = "serde"
+harness = false
 
 [lints.rust]
 unsafe_code = "deny"
