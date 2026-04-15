@@ -99,7 +99,10 @@ jobs:
       - name: Upload coverage reports to Codecov.io
         uses: codecov/codecov-action@v5
         with:
-          fail_ci_if_error: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          # Best-effort upload: Dependabot PRs cannot access secrets, so the
+          # upload would otherwise fail with "Token required because branch
+          # is protected". Pushes to main still succeed because the token is
+          # available there.
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
