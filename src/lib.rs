@@ -87,7 +87,7 @@ impl Hash for ExpirationDate {
 impl PartialEq for ExpirationDate {
     fn eq(&self, other: &Self) -> bool {
         match (self.get_days(), other.get_days()) {
-            (Ok(s), Ok(o)) => (s.0 - o.0).abs() < EPSILON,
+            (Ok(s), Ok(o)) => (s.to_dec() - o.to_dec()).abs() < EPSILON,
             // If day conversion fails for either side, avoid silently treating it as zero.
             _ => false,
         }
