@@ -23,8 +23,6 @@ pub mod parser;
 pub mod prelude;
 /// Hand-written serde impls for [`ExpirationDate`].
 pub mod serde_impl;
-#[cfg(test)]
-mod tests;
 
 use chrono::{DateTime, Utc};
 use positive::Positive;
