@@ -29,6 +29,7 @@ utoipa = { version = "5.4", features = ["chrono", "decimal"], optional = true }
 
 [dev-dependencies]
 serde_json = { version = "1.0" }
+proptest = "1"
 
 [lib]
 name = "expiration_date"
