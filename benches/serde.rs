@@ -8,8 +8,9 @@
 #![allow(clippy::expect_used)]
 
 use chrono::{TimeZone, Utc};
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use expiration_date::ExpirationDate;
+use std::hint::black_box;
 
 fn build_days_variant() -> ExpirationDate {
     let days = "30.0".parse::<positive::Positive>().expect("test fixture");

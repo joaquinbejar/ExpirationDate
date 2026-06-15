@@ -7,8 +7,9 @@
 
 #![allow(missing_docs)]
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use expiration_date::ExpirationDate;
+use std::hint::black_box;
 
 fn bench_from_string(c: &mut Criterion) {
     c.bench_function("from_string/iso_date", |b| {

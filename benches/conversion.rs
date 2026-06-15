@@ -8,8 +8,9 @@
 #![allow(missing_docs)]
 #![allow(clippy::expect_used)]
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use expiration_date::ExpirationDate;
+use std::hint::black_box;
 
 fn build_datetime_variant() -> ExpirationDate {
     let dt = chrono::Utc::now() + chrono::Duration::days(30);

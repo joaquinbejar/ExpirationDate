@@ -1,8 +1,8 @@
 [package]
 name = "expiration_date"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.96"
 authors = ["Joaquin Bejar <jb@taunais.com>"]
 description = "A professional financial instrument expiration date management library with support for standard day count conventions."
 license = "MIT"
@@ -21,15 +21,15 @@ chrono = { version = "0.4", features = ["serde"] }
 positive = { version = "0.5", features = ["utoipa"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
-rust_decimal = { version = "1.41", features = ["maths", "serde"] }
+rust_decimal = { version = "1.42", features = ["maths", "serde"] }
 rust_decimal_macros = { version = "1.40" }
 thiserror = { version = "2.0" }
 tracing = { version = "0.1" }
-utoipa = { version = "5.4", features = ["chrono", "decimal"], optional = true }
+utoipa = { version = "5.5", features = ["chrono", "decimal"], optional = true }
 
 [dev-dependencies]
 serde_json = { version = "1.0" }
-proptest = "1"
+proptest = "1.11"
 criterion = { version = "0.8", features = ["html_reports"] }
 
 [lib]
