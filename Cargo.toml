@@ -2,7 +2,7 @@
 name = "expiration_date"
 version = "0.2.1"
 edition = "2024"
-rust-version = "1.96"
+rust-version = "1.86"
 authors = ["Joaquin Bejar <jb@taunais.com>"]
 description = "A professional financial instrument expiration date management library with support for standard day count conventions."
 license = "MIT"
