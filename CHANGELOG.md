@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-17
+
+### Changed — breaking
+- `positive` bumped from 0.5 to 0.6. `Positive` appears throughout this
+  crate's public API (`ExpirationDate::Days`,
+  `ExpirationDateError::PositiveError`), so consumers must move to
+  `positive` 0.6 in the same step. See the `positive` 0.6.0 changelog for
+  its own breaking changes (`ln`/`log10` return `Decimal`, serde emits a
+  string, `==` against `Decimal`/`f64` is exact, `PositiveError::Other`
+  and `new_unchecked` removed).
+- `get_date`, `get_date_with_base` and `get_date_with_options` return
+  `Err(ExpirationDateError::PositiveError(..))` instead of panicking when
+  `Days` holds a value above `i64::MAX`: the deprecated
+  `Positive::to_i64` was replaced by `i64::try_from`.
+
+### Housekeeping
+- Folds in 0.2.1, which was released without a changelog entry of its own.
+
 ## [0.2.0] - 2026-04-15
 
 ### Added

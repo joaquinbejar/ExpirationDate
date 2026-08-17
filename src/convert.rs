@@ -131,7 +131,7 @@ impl ExpirationDate {
         match self {
             Self::Days(days) => {
                 let base = Self::get_reference_datetime().unwrap_or(now);
-                Ok(base + Duration::days((*days).to_i64()))
+                Ok(base + Duration::days(i64::try_from(*days)?))
             }
             Self::DateTime(dt) => Ok(*dt),
         }
@@ -153,7 +153,7 @@ impl ExpirationDate {
                 .ok_or_else(|| ExpirationDateError::InvalidDateTime("Fixed time error".into()))?;
             let base_dt = DateTime::<Utc>::from_naive_utc_and_offset(fixed, Utc);
             if let Self::Days(days) = self {
-                return Ok(base_dt + Duration::days((*days).to_i64()));
+                return Ok(base_dt + Duration::days(i64::try_from(*days)?));
             }
         }
         self.get_date_with_base(Utc::now())
