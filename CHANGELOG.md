@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Housekeeping
 - Folds in 0.2.1, which was released without a changelog entry of its own.
+- `.cargo/audit.toml`, mirroring the `positive` crate's policy file: it ignores
+  RUSTSEC-2026-0235 (rkyv 0.7.46) with a reachability rationale — `rkyv` is an
+  *optional* dependency of `rust_decimal` that this crate never enables, so it
+  is recorded in `Cargo.lock` but never compiled (`cargo tree --all-features
+  --target all -i rkyv` reports nothing) — and opts into failing on
+  unmaintained/unsound/notice advisories. The entry has an owner and a
+  2027-02-15 review date.
 
 ## [0.2.0] - 2026-04-15
 
