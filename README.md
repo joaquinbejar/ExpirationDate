@@ -240,3 +240,23 @@ We appreciate your interest and look forward to your contributions!
 ## ✍️ License
 
 Licensed under **MIT** license
+
+<!-- related-projects:start -->
+## Related projects
+
+Repositories by the same author that this project depends on, and repositories that depend on it.
+
+### Depends on
+
+| Repository | Description |
+|------------|-------------|
+| [positive](https://github.com/joaquinbejar/positive) · [crates.io](https://crates.io/crates/positive) | Type-safe wrapper for guaranteed non-negative Decimal values. |
+
+### Used by
+
+| Repository | Description |
+|------------|-------------|
+| [option_type](https://github.com/joaquinbejar/option_type) · [crates.io](https://crates.io/crates/option_type) | Enum-based classification of vanilla and exotic option contracts. |
+| [OptionStratLib](https://github.com/joaquinbejar/OptionStratLib) · [crates.io](https://crates.io/crates/optionstratlib) | Options pricing, Greeks, strategies and simulation library. |
+
+<!-- related-projects:end -->
