@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Dependencies updated to latest stable versions (rust_decimal 1.42 -> 1.43)
+
 ## [0.3.0] - 2026-08-17
 
 ### Changed — breaking
