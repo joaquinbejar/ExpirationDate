@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.4.0] - 2026-10-05
+
+### Changed — breaking
+- `positive` bumped from 0.6 to 0.7. `Positive` appears throughout this
+  crate's public API (`ExpirationDate::Days`,
+  `ExpirationDateError::PositiveError`), so consumers must move to
+  `positive` 0.7 in the same step.
+- The optional `utoipa` dependency is upgraded from 5.5 to 6.0: with the
+  `utoipa` feature, `ExpirationDate` implements `utoipa::ToSchema` from
+  utoipa 6. Crates still on utoipa 5 should stay on 0.3.
+- Minimum supported Rust version raised from 1.86 to 1.88, required by
+  `positive` 0.7 and utoipa 6.
+
+### Housekeeping
 - CI and the Makefile coverage targets now require cargo-tarpaulin >= 0.37.5 (older releases cannot read Rust 1.99 coverage data); `--timeout 0` became `--timeout 600`, since 0.37.5 treats 0 as zero seconds.
 
 ## [0.3.1] - 2026-09-18
@@ -96,7 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hand-written `PartialEq` / `Eq` / `PartialOrd` / `Ord` / `Hash` with `EPSILON` tolerance.
 - Optional `utoipa` feature for OpenAPI schema generation.
 
-[Unreleased]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.3.1
 [0.3.0]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.3.0
 [0.2.0]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.2.0
