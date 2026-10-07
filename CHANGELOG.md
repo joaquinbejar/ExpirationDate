@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-07
+
+### Fixed
+- `positive`'s `utoipa` feature is no longer enabled unconditionally. It is
+  forwarded from this crate's own `utoipa` feature
+  (`utoipa = ["dep:utoipa", "positive/utoipa"]`), so a build without
+  `utoipa` no longer compiles utoipa through `positive`
+  (joaquinbejar/OptionStratLib#628). With the feature on, nothing changes.
+
 ## [0.4.0] - 2026-10-05
 
 ### Changed — breaking
