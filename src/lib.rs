@@ -34,7 +34,12 @@ use positive::Positive;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
-/// Small decimal value used for high-precision equality comparisons.
+/// Small decimal tolerance for comparing day counts by hand.
+///
+/// `ExpirationDate`'s own equality used it until 0.4.1; since 0.4.2 equality
+/// is exact, so that it is transitive and agrees with `Hash` (see [`cmp`]).
+/// The constant stays for callers that compare fractional day counts
+/// themselves.
 pub const EPSILON: Decimal = dec!(1e-16);
 
 /// Represents the expiration of a financial instrument.

@@ -144,8 +144,18 @@ let date_str = exp.get_date_string().unwrap();
 
 #### Comparison and Ordering
 
-Expiration dates can be compared across variant types. Mixed comparisons
-normalize both sides to days for consistent ordering:
+Expiration dates order by the instant they resolve to: a `DateTime` is that
+instant, and `Days(d)` is `d` days after the reference datetime (or now, when
+none is set). Past dates keep their own instants, so two expired expiries stay
+distinct and ordered.
+
+Equality and hashing never read the clock: two `DateTime`s are equal when
+they are the same instant, two `Days` when their day counts are equal, and a
+`Days` never equals a `DateTime`. `a == b` implies equal hashes, and `Ord` is
+total. Ordering a `Days` against a `DateTime` reads the base, so its answer
+can change over time; pin the base with
+`ExpirationDate::set_reference_datetime` when an ordered collection holds
+both variants.
 
 ```rust
 use expiration_date::ExpirationDate;

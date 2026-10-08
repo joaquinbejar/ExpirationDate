@@ -1,6 +1,6 @@
 //! Integration tests for the hand-written `PartialEq` / `Eq` / `PartialOrd`
-//! / `Ord` impls on [`ExpirationDate`], including EPSILON semantics and
-//! sort stability.
+//! / `Ord` impls on [`ExpirationDate`]: exact equality, ordering by the
+//! resolved instant, and sort stability.
 
 #![allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 
@@ -26,12 +26,15 @@ fn test_partial_eq_days_variants_equal() {
     assert_eq!(date1, date2);
 }
 
+/// Equality is exact since 0.4.2: a tolerance is not transitive and cannot
+/// agree with `Hash`, so two day counts half an `EPSILON` apart are distinct.
 #[test]
-fn test_partial_eq_days_variants_within_epsilon() {
+fn test_partial_eq_days_variants_within_epsilon_are_distinct() {
     let date1 = ExpirationDate::Days(pos_or_panic!(30.0));
     let date2 =
         ExpirationDate::Days(Positive::new_decimal(dec!(30.0) + EPSILON / dec!(2.0)).unwrap());
-    assert_eq!(date1, date2);
+    assert_ne!(date1, date2);
+    assert_eq!(date1.cmp(&date2), Ordering::Less);
 }
 
 #[test]
@@ -58,13 +61,16 @@ fn test_partial_eq_datetime_variants_different() {
     assert_ne!(date1, date2);
 }
 
+/// A past `DateTime` is no longer clamped to zero days: it stays its own
+/// instant, before `Days(0)` (now), and is never equal to a `Days`.
 #[test]
-fn test_partial_eq_mixed_variants_with_zero_fallback() {
+fn test_past_datetime_is_not_clamped_to_zero_days() {
     let days_date = ExpirationDate::Days(Positive::ZERO);
-    // A past DateTime should clamp to ZERO days.
     let past_datetime = Utc::now() - Duration::days(10);
     let datetime_date = ExpirationDate::DateTime(past_datetime);
-    assert_eq!(days_date, datetime_date);
+    assert_ne!(days_date, datetime_date);
+    assert_eq!(datetime_date.cmp(&days_date), Ordering::Less);
+    assert_eq!(days_date.cmp(&datetime_date), Ordering::Greater);
 }
 
 #[test]
@@ -229,6 +235,73 @@ fn test_mixed_variant_comparison_edge_cases() {
     let zero_days = ExpirationDate::Days(Positive::ZERO);
     let very_old_datetime = Utc.with_ymd_and_hms(1990, 1, 1, 0, 0, 0).unwrap();
     let old_datetime_date = ExpirationDate::DateTime(very_old_datetime);
-    // Both clamp to ZERO days and must compare equal.
-    assert_eq!(zero_days, old_datetime_date);
+    // 1990 is long before now, which is where `Days(0)` resolves.
+    assert_ne!(zero_days, old_datetime_date);
+    assert!(old_datetime_date < zero_days);
+}
+
+/// Two distinct expiries that have both passed were clamped to zero days and
+/// compared equal before 0.4.2 (joaquinbejar/OptionStratLib#825).
+#[test]
+fn test_distinct_past_dates_are_unequal_and_ordered() {
+    let earlier = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2020, 3, 20, 16, 0, 0).unwrap());
+    let later = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2020, 6, 19, 16, 0, 0).unwrap());
+    assert_ne!(earlier, later);
+    assert_eq!(earlier.cmp(&later), Ordering::Less);
+    assert_eq!(later.cmp(&earlier), Ordering::Greater);
+}
+
+/// The order of two future dates does not depend on when it is asked.
+#[test]
+fn test_future_dates_order_is_stable() {
+    let near = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2098, 3, 20, 16, 0, 0).unwrap());
+    let far = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2099, 6, 19, 16, 0, 0).unwrap());
+    let first = near.cmp(&far);
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    assert_eq!(first, Ordering::Less);
+    assert_eq!(near.cmp(&far), first);
+}
+
+/// An ordered map keyed by expiry keeps every past expiry as its own entry.
+#[test]
+fn test_btreemap_keeps_two_past_expiries() {
+    let mut chains = std::collections::BTreeMap::new();
+    let march = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2020, 3, 20, 16, 0, 0).unwrap());
+    let june = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2020, 6, 19, 16, 0, 0).unwrap());
+    chains.insert(june, "june");
+    chains.insert(march, "march");
+    assert_eq!(chains.len(), 2);
+    assert_eq!(
+        chains.values().copied().collect::<Vec<_>>(),
+        ["march", "june"]
+    );
+    assert_eq!(chains.get(&march), Some(&"march"));
+}
+
+/// With the base pinned, a `Days` and a `DateTime` that resolve to the same
+/// instant are still unequal, and the tie goes to the `Days` both ways round.
+#[test]
+fn test_mixed_variant_tie_orders_days_first() {
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+    ExpirationDate::set_reference_datetime(Some(base));
+    let days = ExpirationDate::Days(pos_or_panic!(30.0));
+    let same_instant = ExpirationDate::DateTime(base + Duration::days(30));
+    let tie = (days.cmp(&same_instant), same_instant.cmp(&days));
+    let later = ExpirationDate::DateTime(base + Duration::days(31));
+    let before_later = days.cmp(&later);
+    ExpirationDate::set_reference_datetime(None);
+
+    assert_ne!(days, same_instant);
+    assert_eq!(tie, (Ordering::Less, Ordering::Greater));
+    assert_eq!(before_later, Ordering::Less);
+}
+
+/// A day count past the last representable `DateTime` sorts after every
+/// `DateTime` rather than failing.
+#[test]
+fn test_days_beyond_datetime_range_sort_last() {
+    let far = ExpirationDate::Days(Positive::MAX);
+    let date = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).unwrap());
+    assert_eq!(far.cmp(&date), Ordering::Greater);
+    assert_eq!(date.cmp(&far), Ordering::Less);
 }
