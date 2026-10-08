@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-08
+
+### Fixed
+- `PartialEq`, `Eq`, `PartialOrd`, `Ord` and `Hash` now agree, and follow the
+  instant each expiration resolves to (joaquinbejar/OptionStratLib#825).
+  Before, equality and ordering went through `get_days()`, which clamps
+  every past date to zero days and compared with an `EPSILON` tolerance,
+  while `Hash` hashed the raw variant. Two distinct expired dates therefore
+  compared equal, an ordered map keyed by expiry folded every expired
+  expiry into one entry, and `Eq` and `Hash` disagreed.
+  - Two `DateTime`s compare by instant, to the nanosecond, past or future.
+  - Two `Days` compare by day count, exactly. Equal day counts written at
+    different scales (`30` and `30.0`) are still equal and hash equal; day
+    counts less than `EPSILON` apart are now distinct.
+  - A `Days` is never equal to a `DateTime`. Ordering between them resolves
+    the `Days` against the reference datetime (or now) and, on a tie, puts
+    the `Days` first, so `Ord` stays total and never answers `Equal` for
+    values that are not `==`. That mixed comparison reads the clock;
+    equality and hashing never do.
+  - A `Days` too large to resolve to a `DateTime` sorts after every
+    `DateTime`.
+  - Comparing a `DateTime` no longer sets the thread's reference datetime
+    as a side effect of `get_days()`.
+
 ## [0.4.1] - 2026-10-07
 
 ### Fixed
