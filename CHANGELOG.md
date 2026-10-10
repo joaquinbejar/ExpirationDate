@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-10
+
+### Changed — breaking
+- `positive` bumped from 0.7 to 0.8. `Positive` appears throughout this
+  crate's public API (`ExpirationDate::Days`,
+  `ExpirationDateError::PositiveError`), so consumers must move to
+  `positive` 0.8 in the same step. `positive` 0.8 removes the `non-zero`
+  feature: `Positive` is always `>= 0` and `StrictlyPositive` is the only
+  strictly positive type. This crate never enabled that feature, so its own
+  behavior is unchanged.
+
 ## [0.4.2] - 2026-10-08
 
 ### Fixed
@@ -142,7 +153,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hand-written `PartialEq` / `Eq` / `PartialOrd` / `Ord` / `Hash` with `EPSILON` tolerance.
 - Optional `utoipa` feature for OpenAPI schema generation.
 
-[Unreleased]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.4.2...v0.5.0
+[0.4.2]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/joaquinbejar/ExpirationDate/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.3.1
 [0.3.0]: https://github.com/joaquinbejar/ExpirationDate/releases/tag/v0.3.0
