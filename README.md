@@ -48,14 +48,14 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-expiration_date = "0.4"
+expiration_date = "0.5"
 ```
 
 To enable OpenAPI schema support:
 
 ```toml
 [dependencies]
-expiration_date = { version = "0.4", features = ["utoipa"] }
+expiration_date = { version = "0.5", features = ["utoipa"] }
 ```
 
 ### Quick Start
