@@ -56,7 +56,7 @@ fn test_different_variants_different_hash() {
 
 #[test]
 fn test_hash_consistency_over_time() {
-    let date = Utc::now();
+    let date = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
     let exp = ExpirationDate::DateTime(date);
     let hash1 = calculate_hash(&exp);
     std::thread::sleep(std::time::Duration::from_millis(10));
@@ -66,7 +66,7 @@ fn test_hash_consistency_over_time() {
 
 #[test]
 fn test_different_but_equivalent_dates_different_hash() {
-    let now = Utc::now();
+    let now = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
     let thirty_days_later = now + Duration::days(30);
     let exp1 = ExpirationDate::Days(Positive::new(30.0).unwrap());
     let exp2 = ExpirationDate::DateTime(thirty_days_later);

@@ -10,6 +10,31 @@
 //! [`convert`] (day/year accessors, `Display`, `Default`), [`parser`]
 //! (`from_string` and friends), and [`serde_impl`] (hand-written serde).
 //!
+//! ## Feature flags
+//!
+//! - **`clock`** (on by default): adds the conversions that ask the system for
+//!   the time, such as [`ExpirationDate::get_days`] and
+//!   [`ExpirationDate::get_date`], and enables the `clock` feature of `chrono`.
+//! - **`utoipa`** (off by default): adds `utoipa::ToSchema`.
+//!
+//! ## Deterministic builds
+//!
+//! A simulator or a replay engine must never read the wall clock. Build with
+//! `default-features = false` and `Utc::now` does not exist in the dependency
+//! graph, unless another crate in the same build turns `chrono/clock` on:
+//! Cargo unifies features, so `cargo tree -e features -i chrono` is what proves
+//! it for a given build.
+//!
+//! What stays available reads no clock: the `*_at` conversions in [`convert`],
+//! which take the time as an argument, [`ExpirationDate::from_string`],
+//! [`ExpirationDate::cmp_at`], serde, and `Eq`, `Ord` and `Hash` (see [`cmp`]).
+//!
+//! Only `Display` for a `Days` reads the thread's reference datetime in every
+//! build; with `clock` on, so do [`ExpirationDate::get_date`],
+//! [`ExpirationDate::get_date_with_options`] without the fixed time, and
+//! [`ExpirationDate::get_years_with_convention`]. Nothing in this crate writes
+//! it except [`ExpirationDate::set_reference_datetime`].
+//!
 //! ## Minimum Supported Rust Version
 //!
 //! `expiration_date` requires **Rust 1.85** or later (Edition 2024).
@@ -59,6 +84,10 @@ impl ExpirationDate {
     }
 
     /// Sets the reference datetime for Days variant calculations.
+    ///
+    /// It belongs to the calling thread and stays until changed. The `*_at`
+    /// conversions take their base as an argument and ignore it, which suits
+    /// deterministic code better.
     pub fn set_reference_datetime(dt: Option<DateTime<Utc>>) {
         Self::REFERENCE_DATETIME.with(|cell| {
             *cell.borrow_mut() = dt;

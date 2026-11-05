@@ -53,6 +53,19 @@ test:
 	@echo "🧪 Running all tests..."
 	RUST_LOG=warn cargo test --all-features
 
+# Without the default features nothing may be able to read the wall clock:
+# `chrono` must not have `clock` or `now`, with or without the optional features.
+.PHONY: test-no-clock
+test-no-clock:
+	@echo "🧪 Checking and testing the clock-free build..."
+	cargo clippy --all-targets --no-default-features -- -D warnings
+	RUST_LOG=warn cargo test --no-default-features
+	@for features in "" "utoipa"; do \
+	  if cargo tree -e features -i chrono --no-default-features --features "$$features" | grep -E 'chrono feature "(clock|now)"'; then \
+	    echo "chrono can read the clock with features: '$$features'"; exit 1; \
+	  fi; \
+	done
+
 .PHONY: test-lib
 test-lib:
 	@echo "🧪 Running library tests..."
@@ -98,7 +111,7 @@ check: fmt-check lint test
 	@echo "✅ All checks passed!"
 
 .PHONY: pre-push
-pre-push: fix fmt lint-fix test doc
+pre-push: fix fmt lint-fix test test-no-clock doc
 	@echo "✅ All pre-push checks passed!"
 
 # =============================================================================

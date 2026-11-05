@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-05
+
+A build can now guarantee it never reads the wall clock
+(joaquinbejar/ExpirationDate#39), which simulators and replay engines need.
+
+### Added
+- `clock` feature, on by default. It enables `chrono/clock`. With
+  `default-features = false`, `chrono` has neither `clock` nor `now`, so
+  `Utc::now` does not exist unless another crate in the build enables it.
+- Pure forms that take the time as an argument and ignore the reference
+  datetime: `get_date_at`, `get_days_at`, `get_years_at`,
+  `get_years_with_convention_at`, `get_date_string_at`,
+  `from_string_to_days_at` and `cmp_at`. They exist in every build.
+
+### Changed — breaking
+- `Ord` and `PartialOrd` never read the clock or the reference datetime. Every
+  `Days` now comes before every `DateTime`. Before, a mixed comparison resolved
+  the `Days` against the reference datetime or the clock, so `sort`, `max` or a
+  `BTreeMap` insert could read the clock, and their answer changed with time. To
+  compare mixed variants in time, call `cmp_at` with an explicit base. Within a
+  variant the order is unchanged.
+- `get_days`, `get_years`, `get_years_with_convention`, `get_date`,
+  `get_date_with_options`, `get_date_string` and `from_string_to_days` need the
+  `clock` feature. Builds that disable the default features must use the `*_at`
+  forms.
+- `from_string` and `get_days` no longer write the thread's reference datetime.
+  Before, parsing a date or asking a `DateTime` for its days silently changed
+  what every later `Days` on that thread resolved to. Code that relied on it
+  must call `set_reference_datetime` itself.
+- `Display` for a `Days` with no reference datetime prints the count, as in
+  `30 days`, when the `clock` feature is off. With `clock` on the output is
+  unchanged.
+
+### Fixed
+- `get_date`, `get_date_with_options`, `get_date_string`,
+  `get_years_with_convention` and `Display` no longer panic on a `Days` too
+  large to resolve: `Days(1e9)` overflowed the addition to `DateTime` and
+  `Days(1e15)` the span. The methods return
+  `ExpirationDateError::ArithmeticOverflow`, and `Display` prints
+  `Invalid Expiration`.
+- `get_date`, `get_date_with_options` and `get_date_string` no longer read the
+  clock for a `DateTime`.
+
 ## [0.5.0] - 2026-10-10
 
 ### Changed — breaking

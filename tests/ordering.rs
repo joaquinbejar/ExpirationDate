@@ -61,16 +61,16 @@ fn test_partial_eq_datetime_variants_different() {
     assert_ne!(date1, date2);
 }
 
-/// A past `DateTime` is no longer clamped to zero days: it stays its own
-/// instant, before `Days(0)` (now), and is never equal to a `Days`.
+/// A past `DateTime` is not clamped to zero days: it stays its own instant,
+/// before `Days(0)` counted from a later base, and is never equal to a `Days`.
 #[test]
 fn test_past_datetime_is_not_clamped_to_zero_days() {
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
     let days_date = ExpirationDate::Days(Positive::ZERO);
-    let past_datetime = Utc::now() - Duration::days(10);
-    let datetime_date = ExpirationDate::DateTime(past_datetime);
+    let datetime_date = ExpirationDate::DateTime(base - Duration::days(10));
     assert_ne!(days_date, datetime_date);
-    assert_eq!(datetime_date.cmp(&days_date), Ordering::Less);
-    assert_eq!(days_date.cmp(&datetime_date), Ordering::Greater);
+    assert_eq!(datetime_date.cmp_at(&days_date, base), Ordering::Less);
+    assert_eq!(days_date.cmp_at(&datetime_date, base), Ordering::Greater);
 }
 
 #[test]
@@ -123,10 +123,11 @@ fn test_ord_days_variants_greater() {
     let date2 = ExpirationDate::DateTime(datetime2);
     assert_eq!(date1.cmp(&date2), Ordering::Less);
 
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
     let date1 = ExpirationDate::Days(pos_or_panic!(100_000.0));
     let datetime2 = Utc.with_ymd_and_hms(2099, 12, 20, 16, 0, 0).unwrap();
     let date2 = ExpirationDate::DateTime(datetime2);
-    assert_eq!(date1.cmp(&date2), Ordering::Greater);
+    assert_eq!(date1.cmp_at(&date2, base), Ordering::Greater);
 }
 
 #[test]
@@ -149,9 +150,9 @@ fn test_ord_datetime_variants() {
 #[test]
 fn test_ord_mixed_variants() {
     let days_date = ExpirationDate::Days(pos_or_panic!(20.0));
-    let future_datetime = Utc::now() + Duration::days(30);
-    let datetime_date = ExpirationDate::DateTime(future_datetime);
-    let result = days_date.cmp(&datetime_date);
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+    let datetime_date = ExpirationDate::DateTime(base + Duration::days(30));
+    let result = days_date.cmp_at(&datetime_date, base);
     assert!(result != Ordering::Equal);
     assert_eq!(result, Ordering::Less);
 }
@@ -235,9 +236,10 @@ fn test_mixed_variant_comparison_edge_cases() {
     let zero_days = ExpirationDate::Days(Positive::ZERO);
     let very_old_datetime = Utc.with_ymd_and_hms(1990, 1, 1, 0, 0, 0).unwrap();
     let old_datetime_date = ExpirationDate::DateTime(very_old_datetime);
-    // 1990 is long before now, which is where `Days(0)` resolves.
+    // 1990 is long before the base, which is where `Days(0)` resolves.
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
     assert_ne!(zero_days, old_datetime_date);
-    assert!(old_datetime_date < zero_days);
+    assert_eq!(old_datetime_date.cmp_at(&zero_days, base), Ordering::Less);
 }
 
 /// Two distinct expiries that have both passed were clamped to zero days and
@@ -278,30 +280,112 @@ fn test_btreemap_keeps_two_past_expiries() {
     assert_eq!(chains.get(&march), Some(&"march"));
 }
 
-/// With the base pinned, a `Days` and a `DateTime` that resolve to the same
-/// instant are still unequal, and the tie goes to the `Days` both ways round.
+/// A `Days` and a `DateTime` that resolve to the same instant are still
+/// unequal, and the tie goes to the `Days` both ways round.
 #[test]
-fn test_mixed_variant_tie_orders_days_first() {
+fn test_cmp_at_tie_orders_days_first() {
     let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
-    ExpirationDate::set_reference_datetime(Some(base));
     let days = ExpirationDate::Days(pos_or_panic!(30.0));
     let same_instant = ExpirationDate::DateTime(base + Duration::days(30));
-    let tie = (days.cmp(&same_instant), same_instant.cmp(&days));
     let later = ExpirationDate::DateTime(base + Duration::days(31));
-    let before_later = days.cmp(&later);
-    ExpirationDate::set_reference_datetime(None);
 
     assert_ne!(days, same_instant);
-    assert_eq!(tie, (Ordering::Less, Ordering::Greater));
-    assert_eq!(before_later, Ordering::Less);
+    assert_eq!(days.cmp_at(&same_instant, base), Ordering::Less);
+    assert_eq!(same_instant.cmp_at(&days, base), Ordering::Greater);
+    assert_eq!(days.cmp_at(&later, base), Ordering::Less);
 }
 
-/// A day count past the last representable `DateTime` sorts after every
+/// A fraction of a day counts: `cmp_at` resolves to the nanosecond.
+#[test]
+fn test_cmp_at_resolves_fractional_days_to_the_nanosecond() {
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+    let half_a_day = ExpirationDate::Days(pos_or_panic!(0.5));
+    let at_eleven = ExpirationDate::DateTime(base + Duration::hours(11));
+    let at_thirteen = ExpirationDate::DateTime(base + Duration::hours(13));
+    assert_eq!(half_a_day.cmp_at(&at_eleven, base), Ordering::Greater);
+    assert_eq!(half_a_day.cmp_at(&at_thirteen, base), Ordering::Less);
+}
+
+/// Within a variant `cmp_at` agrees with `Ord`, whatever the base.
+#[test]
+fn test_cmp_at_same_variant_agrees_with_ord() {
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+    let near = ExpirationDate::Days(pos_or_panic!(1.0));
+    let far = ExpirationDate::Days(pos_or_panic!(2.0));
+    let early = ExpirationDate::DateTime(base);
+    let late = ExpirationDate::DateTime(base + Duration::days(1));
+    assert_eq!(near.cmp_at(&far, base), near.cmp(&far));
+    assert_eq!(near.cmp_at(&near, base), Ordering::Equal);
+    assert_eq!(late.cmp_at(&early, base), late.cmp(&early));
+    assert_eq!(late.cmp_at(&late, base), Ordering::Equal);
+}
+
+/// A day count past the last representable `DateTime` comes after every
 /// `DateTime` rather than failing.
 #[test]
-fn test_days_beyond_datetime_range_sort_last() {
+fn test_cmp_at_days_beyond_datetime_range_sort_last() {
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
     let far = ExpirationDate::Days(Positive::MAX);
     let date = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).unwrap());
-    assert_eq!(far.cmp(&date), Ordering::Greater);
-    assert_eq!(date.cmp(&far), Ordering::Less);
+    assert_eq!(far.cmp_at(&date, base), Ordering::Greater);
+    assert_eq!(date.cmp_at(&far, base), Ordering::Less);
+}
+
+/// Every `Days` comes before every `DateTime`, past or future, whatever the
+/// day count, both ways round.
+#[test]
+fn test_ord_mixed_variants_orders_days_first() {
+    let huge = ExpirationDate::Days(Positive::MAX);
+    let zero = ExpirationDate::Days(Positive::ZERO);
+    let past = ExpirationDate::DateTime(Utc.with_ymd_and_hms(1990, 1, 1, 0, 0, 0).unwrap());
+    let future = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).unwrap());
+    for days in [huge, zero] {
+        for date in [past, future] {
+            assert_eq!(days.cmp(&date), Ordering::Less);
+            assert_eq!(date.cmp(&days), Ordering::Greater);
+        }
+    }
+}
+
+/// The reference datetime does not reach `Ord`, so a collection sorted under
+/// one reference is still sorted under another. It used to.
+#[test]
+fn test_ord_mixed_variants_ignores_reference_datetime() {
+    let days = ExpirationDate::Days(pos_or_panic!(30.0));
+    let date = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2030, 1, 15, 0, 0, 0).unwrap());
+    let before = Utc.with_ymd_and_hms(2029, 1, 1, 0, 0, 0).unwrap();
+    let after = Utc.with_ymd_and_hms(2031, 1, 1, 0, 0, 0).unwrap();
+
+    ExpirationDate::set_reference_datetime(Some(before));
+    let under_before = days.cmp(&date);
+    ExpirationDate::set_reference_datetime(Some(after));
+    let under_after = days.cmp(&date);
+    ExpirationDate::set_reference_datetime(None);
+
+    assert_eq!(under_before, Ordering::Less);
+    assert_eq!(under_after, Ordering::Less);
+    // The order `cmp_at` gives does depend on the base it is handed.
+    assert_eq!(days.cmp_at(&date, before), Ordering::Less);
+    assert_eq!(days.cmp_at(&date, after), Ordering::Greater);
+}
+
+/// A map keyed by mixed variants finds every key again.
+#[test]
+fn test_btreemap_mixed_keys_stay_findable() {
+    let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+    let keys = [
+        ExpirationDate::DateTime(base + Duration::days(40)),
+        ExpirationDate::Days(pos_or_panic!(50.0)),
+        ExpirationDate::DateTime(base),
+        ExpirationDate::Days(pos_or_panic!(10.0)),
+    ];
+    let map: std::collections::BTreeMap<_, _> = keys.iter().copied().zip(0..).collect();
+    assert_eq!(map.len(), keys.len());
+    for (position, key) in keys.iter().enumerate() {
+        assert_eq!(map.get(key), Some(&position));
+    }
+    assert_eq!(
+        map.keys().copied().collect::<Vec<_>>(),
+        [keys[3], keys[1], keys[2], keys[0]]
+    );
 }

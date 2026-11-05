@@ -7,6 +7,7 @@
 use chrono::{Duration, TimeZone, Utc};
 use expiration_date::ExpirationDate;
 use positive::{Positive, pos_or_panic};
+use std::cmp::Ordering;
 
 #[test]
 fn test_expiration_date_days() {
@@ -88,7 +89,9 @@ fn test_comparisons() {
     let ten_days = ExpirationDate::Days(Positive::TEN);
     let tomorrow = Utc::now() + Duration::days(1);
     let tomorrow_date = ExpirationDate::DateTime(tomorrow);
-    assert!(tomorrow_date < ten_days);
+    assert_eq!(tomorrow_date.cmp_at(&ten_days, now), Ordering::Less);
+    // `Ord` needs no base: every `Days` comes before every `DateTime`.
+    assert!(ten_days < tomorrow_date);
 }
 
 #[test]
@@ -117,4 +120,50 @@ fn test_get_date_string_datetime() {
     let specific_date = Utc.with_ymd_and_hms(2024, 12, 31, 0, 0, 0).unwrap();
     let expiration = ExpirationDate::DateTime(specific_date);
     assert_eq!(expiration.get_date_string().unwrap(), "2024-12-31");
+}
+
+/// Asking for the days left no longer changes what a later `Days` resolves to.
+#[test]
+fn test_get_days_leaves_reference_datetime_unset() {
+    ExpirationDate::set_reference_datetime(None);
+    let date = ExpirationDate::DateTime(Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).unwrap());
+    let _ = date.get_days().unwrap();
+    let _ = date.get_years().unwrap();
+    assert_eq!(ExpirationDate::get_reference_datetime(), None);
+}
+
+/// With a reference set, the clock forms resolve a `Days` as the pure form
+/// does from that reference.
+#[test]
+fn test_get_date_with_reference_matches_get_date_at() {
+    let reference = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+    let days = ExpirationDate::Days(pos_or_panic!(30.0));
+    ExpirationDate::set_reference_datetime(Some(reference));
+    let resolved = days.get_date().unwrap();
+    ExpirationDate::set_reference_datetime(None);
+    assert_eq!(resolved, days.get_date_at(reference).unwrap());
+}
+
+/// A date beyond what `DateTime` can hold is an error and not a panic, in the
+/// clock forms as well.
+#[test]
+fn test_get_date_out_of_range_days_is_an_error() {
+    for days in [1e9, 1e15, 1e20] {
+        let expiration = ExpirationDate::Days(Positive::new(days).unwrap());
+        assert!(expiration.get_date().is_err(), "{days} days");
+        assert!(expiration.get_date_string().is_err(), "{days} days");
+        assert_eq!(expiration.to_string(), "Invalid Expiration");
+    }
+}
+
+/// A `Days` from `get_years_with_convention` keeps counting from the reference
+/// for the target while the fraction starts at the clock, as it always has.
+#[test]
+fn test_get_years_with_convention_past_reference_gives_zero() {
+    let reference = Utc.with_ymd_and_hms(2000, 1, 1, 0, 0, 0).unwrap();
+    let days = ExpirationDate::Days(pos_or_panic!(30.0));
+    ExpirationDate::set_reference_datetime(Some(reference));
+    let years = days.get_years_with_convention(expiration_date::conventions::Actual360);
+    ExpirationDate::set_reference_datetime(None);
+    assert_eq!(years.unwrap(), Positive::ZERO);
 }
