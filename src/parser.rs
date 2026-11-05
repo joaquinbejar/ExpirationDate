@@ -24,6 +24,9 @@ impl ExpirationDate {
     ///
     /// Month names are matched case-insensitively.
     ///
+    /// Parsing is pure: it reads neither the clock nor the thread's reference
+    /// datetime, and leaves that reference as it found it.
+    ///
     /// # Errors
     /// Returns [ExpirationDateError::ParseError] if format matches no known pattern,
     /// or [ExpirationDateError::InvalidDateTime] if the derived time components are
@@ -51,14 +54,12 @@ impl ExpirationDate {
         // RFC3339 (e.g., "2025-01-01T00:00:00Z")
         if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
             let utc_dt = dt.with_timezone(&Utc);
-            Self::set_reference_datetime(Some(utc_dt));
             return Ok(Self::DateTime(utc_dt));
         }
 
         // Date with time and timezone, e.g. "2025-01-01 12:00:00 UTC"
         if let Ok(dt) = DateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S %Z") {
             let utc_dt = dt.with_timezone(&Utc);
-            Self::set_reference_datetime(Some(utc_dt));
             return Ok(Self::DateTime(utc_dt));
         }
 
@@ -67,7 +68,6 @@ impl ExpirationDate {
             for format in ["%Y-%m-%d %H:%M:%S %Z", "%Y-%m-%d %H:%M:%S UTC"] {
                 if let Ok(datetime) = DateTime::parse_from_str(s, format) {
                     let utc_dt = DateTime::from(datetime);
-                    Self::set_reference_datetime(Some(utc_dt));
                     return Ok(Self::DateTime(utc_dt));
                 }
             }
@@ -76,7 +76,6 @@ impl ExpirationDate {
             let date_time_part = s.trim_end_matches(" UTC").trim();
             if let Ok(dt) = NaiveDateTime::parse_from_str(date_time_part, "%Y-%m-%d %H:%M:%S") {
                 let utc_dt = DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc);
-                Self::set_reference_datetime(Some(utc_dt));
                 return Ok(Self::DateTime(utc_dt));
             }
         }
@@ -86,7 +85,6 @@ impl ExpirationDate {
             let datetime_str = format!("{s}:00Z");
             if let Ok(datetime) = DateTime::parse_from_rfc3339(&datetime_str) {
                 let utc_dt = DateTime::from(datetime);
-                Self::set_reference_datetime(Some(utc_dt));
                 return Ok(Self::DateTime(utc_dt));
             }
         }
@@ -110,7 +108,6 @@ impl ExpirationDate {
                 .and_then(|date| date.and_hms_opt(23, 59, 59))
             {
                 let datetime = DateTime::<Utc>::from_naive_utc_and_offset(naive_datetime, Utc);
-                Self::set_reference_datetime(Some(datetime));
                 return Ok(Self::DateTime(datetime));
             }
         }
@@ -134,7 +131,6 @@ impl ExpirationDate {
                     ))
                 })?;
                 let datetime = DateTime::<Utc>::from_naive_utc_and_offset(naive_datetime, Utc);
-                Self::set_reference_datetime(Some(datetime));
                 return Ok(Self::DateTime(datetime));
             }
         }
@@ -144,10 +140,31 @@ impl ExpirationDate {
         )))
     }
 
-    /// Parses string and converts result to Days variant.
+    /// Parses string and converts result to Days variant, counted from `now`.
+    ///
+    /// A date in the past gives zero days. Pure: reads neither the clock nor
+    /// the thread's reference datetime.
     ///
     /// # Errors
     /// Returns error if parsing or conversion fails.
+    #[must_use = "Parsed days result must be used."]
+    pub fn from_string_to_days_at(
+        s: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Self, ExpirationDateError> {
+        let exp = Self::from_string(s)?;
+        Ok(Self::Days(exp.get_days_at(now)?))
+    }
+
+    /// Parses string and converts result to Days variant.
+    ///
+    /// Reads the clock when `s` is a date. For a pure form see
+    /// [`Self::from_string_to_days_at`].
+    ///
+    /// # Errors
+    /// Returns error if parsing or conversion fails.
+    #[cfg(feature = "clock")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "clock")))]
     #[must_use = "Parsed days result must be used."]
     pub fn from_string_to_days(s: &str) -> Result<Self, ExpirationDateError> {
         let exp = Self::from_string(s)?;

@@ -39,6 +39,7 @@ need to be expressed either as days-to-expiration (DTE) or as specific calendar 
 - **Prelude Module**: Simple imports with `use expiration_date::prelude::*;`
 - **Serde Support**: Full serialization/deserialization support for JSON and other formats
 - **Custom Ordering**: Compare and sort expirations regardless of variant type
+- **Clock-free Builds**: Pure conversions that take the time as an argument; disable the `clock` feature and nothing can read the wall clock
 - **Reference DateTime**: Thread-local reference time support for deterministic testing
 - **Optional utoipa Integration**: OpenAPI schema generation support via feature flag
 
@@ -48,15 +49,26 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-expiration_date = "0.5"
+expiration_date = "0.6"
 ```
 
 To enable OpenAPI schema support:
 
 ```toml
 [dependencies]
-expiration_date = { version = "0.5", features = ["utoipa"] }
+expiration_date = { version = "0.6", features = ["utoipa"] }
 ```
+
+To guarantee that the crate cannot read the wall clock, for a simulator or a
+replay engine, turn off the `clock` feature, which is on by default:
+
+```toml
+[dependencies]
+expiration_date = { version = "0.6", default-features = false }
+```
+
+Cargo unifies features across a build, so check that no other crate turns it
+back on: `cargo tree -e features -i chrono` must not list `clock` or `now`.
 
 ### Quick Start
 
@@ -127,6 +139,34 @@ let date = exp.get_date().unwrap();
 let date_str = exp.get_date_string().unwrap();
 ```
 
+These methods ask the system for the time and need the `clock` feature. Each
+has a pure form that takes the time as an argument, ignores the reference
+datetime and exists in every build:
+
+| Reads the clock | Pure |
+|-----------------|------|
+| `get_years()` | `get_years_at(now)` |
+| `get_years_with_convention(c)` | `get_years_with_convention_at(c, now)` |
+| `get_days()` | `get_days_at(now)` |
+| `get_date()`, `get_date_with_options(false)` | `get_date_at(base)` |
+| `get_date_string()` | `get_date_string_at(today)` |
+| `from_string_to_days(s)` | `from_string_to_days_at(s, now)` |
+
+```rust
+use chrono::{Duration, TimeZone, Utc};
+use expiration_date::ExpirationDate;
+
+let now = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+let exp = ExpirationDate::DateTime(now + Duration::days(365));
+
+let years = exp.get_years_at(now).unwrap(); // 1.0
+```
+
+`Display` exists in every build. A `DateTime` prints its instant. A `Days`
+prints the instant it resolves to from the reference datetime; with none set it
+reads the clock when the `clock` feature is on, and otherwise prints the count,
+as in `30 days`.
+
 #### String Parsing
 
 `ExpirationDate::from_string` supports multiple date formats:
@@ -144,31 +184,37 @@ let date_str = exp.get_date_string().unwrap();
 
 #### Comparison and Ordering
 
-Expiration dates order by the instant they resolve to: a `DateTime` is that
-instant, and `Days(d)` is `d` days after the reference datetime (or now, when
-none is set). Past dates keep their own instants, so two expired expiries stay
-distinct and ordered.
+Equality, hashing and ordering never read the clock or the reference datetime,
+so a sorted collection or a hash map stays valid as time passes.
 
-Equality and hashing never read the clock: two `DateTime`s are equal when
-they are the same instant, two `Days` when their day counts are equal, and a
-`Days` never equals a `DateTime`. `a == b` implies equal hashes, and `Ord` is
-total. Ordering a `Days` against a `DateTime` reads the base, so its answer
-can change over time; pin the base with
-`ExpirationDate::set_reference_datetime` when an ordered collection holds
-both variants.
+Two `DateTime`s are equal when they are the same instant, two `Days` when their
+day counts are equal, and a `Days` never equals a `DateTime`. `a == b` implies
+equal hashes, and `Ord` is total: within a variant it is chronological, and
+every `Days` comes before every `DateTime`. Past dates keep their own instants,
+so two expired expiries stay distinct and ordered.
+
+That order between variants says nothing about which one expires first, which
+depends on a base. To compare in time, pass one to `cmp_at`:
 
 ```rust
 use expiration_date::ExpirationDate;
 use positive::pos_or_panic;
-use chrono::{Duration, Utc};
+use chrono::{Duration, TimeZone, Utc};
+use std::cmp::Ordering;
 
 let thirty_days = ExpirationDate::Days(pos_or_panic!(30.0));
 let sixty_days = ExpirationDate::Days(pos_or_panic!(60.0));
 assert!(thirty_days < sixty_days);
 
-// Sort a collection of mixed variants
+// Sort a collection
 let mut expirations = vec![sixty_days, thirty_days];
 expirations.sort();
+
+// Compare across variants in time, from an explicit base
+let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+let in_ten_days = ExpirationDate::DateTime(base + Duration::days(10));
+assert_eq!(thirty_days.cmp_at(&in_ten_days, base), Ordering::Greater);
+assert!(thirty_days < in_ten_days); // `Ord` orders every `Days` first
 ```
 
 #### Serialization
@@ -202,6 +248,7 @@ Error variants include:
 - `PositiveError` - Error from the underlying `Positive` type
 - `ChronoParseError` - Error from chrono date parsing
 - `ParseIntError` - Error parsing integer components
+- `ArithmeticOverflow` - A calculation does not fit its type, such as a day count past the last representable date
 
 ### Use Cases
 

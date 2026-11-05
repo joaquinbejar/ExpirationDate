@@ -3,13 +3,18 @@
 
 #![allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 
-use chrono::{Duration, TimeZone, Utc};
-use expiration_date::ExpirationDate;
-use expiration_date::conventions::{Actual360, DayCount, Thirty360US};
-use positive::Positive;
-use positive::constants::DAYS_IN_A_YEAR;
+use chrono::{TimeZone, Utc};
+use expiration_date::conventions::{DayCount, Thirty360US};
 use std::error::Error;
+#[cfg(feature = "clock")]
+use {
+    chrono::Duration,
+    expiration_date::ExpirationDate,
+    expiration_date::conventions::Actual360,
+    positive::{Positive, constants::DAYS_IN_A_YEAR},
+};
 
+#[cfg(feature = "clock")]
 #[test]
 fn test_actual_365_fixed() -> Result<(), Box<dyn Error>> {
     let exp = ExpirationDate::Days(DAYS_IN_A_YEAR);
@@ -18,6 +23,7 @@ fn test_actual_365_fixed() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(feature = "clock")]
 #[test]
 fn test_actual_360() -> Result<(), Box<dyn Error>> {
     let exp = ExpirationDate::Days(Positive::new(360.0)?);
@@ -42,6 +48,7 @@ fn test_thirty_360_us() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(feature = "clock")]
 #[test]
 fn test_reference_datetime() -> Result<(), Box<dyn Error>> {
     let ref_dt = Utc

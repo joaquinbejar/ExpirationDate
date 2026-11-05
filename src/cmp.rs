@@ -1,17 +1,13 @@
 //! Hand-written comparison and hashing impls for [`ExpirationDate`].
 //!
-//! Every expiration stands for an instant: a `DateTime` is that instant, and
-//! a `Days(d)` is `d` days after its base, which is the thread's reference
-//! datetime ([`ExpirationDate::set_reference_datetime`]) or, when none is
-//! set, `Utc::now()`. Ordering follows that resolved instant.
-//!
-//! Equality and hashing never read the clock:
+//! Equality, hashing and ordering are pure: they read neither the clock nor
+//! the thread's reference datetime, so a sorted collection or a hash map stays
+//! valid as time passes.
 //!
 //! - two `DateTime`s are equal when they are the same instant, to the
 //!   nanosecond, past or future;
 //! - two `Days` are equal when their day counts are equal (exactly, so that
-//!   equality is transitive and agrees with `Hash`); both resolve against the
-//!   same base, so this is the same as comparing their instants;
+//!   equality is transitive and agrees with `Hash`);
 //! - a `Days` is never equal to a `DateTime`. Whether `Days(30)` and
 //!   "30 days from now" name the same instant depends on when the question
 //!   is asked, and an equality that changes with the clock cannot agree with
@@ -20,13 +16,11 @@
 //! `Hash` hashes the variant and its value, so `a == b` implies
 //! `hash(a) == hash(b)`.
 //!
-//! `Ord` is total. Within a variant it is clock-free: `Days` by day count,
-//! `DateTime` by instant. Across variants it compares the resolved instants
-//! and, when they coincide, puts the `Days` first, so it never answers
-//! `Equal` for two values that are not `==`. A mixed comparison reads the
-//! base, so its answer can change as time passes; an ordered collection that
-//! holds both variants should pin the base with
-//! [`ExpirationDate::set_reference_datetime`] or hold one variant only.
+//! `Ord` is total. Within a variant it is chronological: `Days` by day count,
+//! `DateTime` by instant. Across variants every `Days` comes before every
+//! `DateTime`, which says nothing about which one expires first: that depends
+//! on a base. To compare two expirations in time whatever their variants, use
+//! [`ExpirationDate::cmp_at`] with an explicit one.
 //!
 //! These impls are hand-written on purpose; do not replace them with
 //! `#[derive]`, which would order the variants before their instants.
@@ -54,6 +48,43 @@ impl ExpirationDate {
             Self::DateTime(_) => 1,
         }
     }
+
+    /// Compares two expirations in time, counting a `Days` from `base`.
+    ///
+    /// Same variants compare as [`Ord`] does. A `Days` against a `DateTime`
+    /// compares the instants, to the nanosecond; when they coincide the `Days`
+    /// comes first, so the result is `Equal` only for values that are `==`. A
+    /// `Days` too large to resolve comes after every `DateTime`. Pure: reads
+    /// neither the clock nor the thread's reference datetime.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chrono::{Duration, TimeZone, Utc};
+    /// use expiration_date::ExpirationDate;
+    /// use positive::pos_or_panic;
+    /// use std::cmp::Ordering;
+    ///
+    /// let base = Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap();
+    /// let days = ExpirationDate::Days(pos_or_panic!(30.0));
+    /// let earlier = ExpirationDate::DateTime(base + Duration::days(10));
+    ///
+    /// assert_eq!(days.cmp_at(&earlier, base), Ordering::Greater);
+    /// // `Ord` needs no base: every `Days` comes before every `DateTime`.
+    /// assert_eq!(days.cmp(&earlier), Ordering::Less);
+    /// ```
+    #[must_use = "The comparison result must be used."]
+    pub fn cmp_at(&self, other: &Self, base: DateTime<Utc>) -> Ordering {
+        match (self, other) {
+            (Self::Days(days), Self::DateTime(instant)) => {
+                cmp_days_to_instant(base, *days, instant)
+            }
+            (Self::DateTime(instant), Self::Days(days)) => {
+                cmp_days_to_instant(base, *days, instant).reverse()
+            }
+            _ => self.cmp(other),
+        }
+    }
 }
 
 /// The instant `days` after `base`, to the nanosecond.
@@ -73,13 +104,10 @@ fn resolve_days(base: DateTime<Utc>, days: Positive) -> Option<DateTime<Utc>> {
     base.checked_add_signed(offset)
 }
 
-/// Orders `Days(days)` against `DateTime(instant)` by resolved instant.
+/// Orders `Days(days)`, counted from `base`, against `DateTime(instant)`.
 ///
-/// The `Days` resolves against the thread's reference datetime, or
-/// `Utc::now()` when none is set. A tie goes to the `Days`, so the result is
-/// never `Equal`.
-fn cmp_days_to_instant(days: Positive, instant: &DateTime<Utc>) -> Ordering {
-    let base = ExpirationDate::get_reference_datetime().unwrap_or_else(Utc::now);
+/// A tie goes to the `Days`, so the result is never `Equal`.
+fn cmp_days_to_instant(base: DateTime<Utc>, days: Positive, instant: &DateTime<Utc>) -> Ordering {
     match resolve_days(base, days) {
         Some(resolved) => resolved.cmp(instant).then(Ordering::Less),
         None => Ordering::Greater,
@@ -126,10 +154,8 @@ impl Ord for ExpirationDate {
         match (self, other) {
             (Self::Days(s), Self::Days(o)) => s.cmp(o),
             (Self::DateTime(s), Self::DateTime(o)) => s.cmp(o),
-            (Self::Days(days), Self::DateTime(instant)) => cmp_days_to_instant(*days, instant),
-            (Self::DateTime(instant), Self::Days(days)) => {
-                cmp_days_to_instant(*days, instant).reverse()
-            }
+            (Self::Days(_), Self::DateTime(_)) => Ordering::Less,
+            (Self::DateTime(_), Self::Days(_)) => Ordering::Greater,
         }
     }
 }

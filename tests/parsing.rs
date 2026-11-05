@@ -127,6 +127,7 @@ fn test_from_string_with_utc_suffix() {
     }
 }
 
+#[cfg(feature = "clock")]
 #[test]
 fn test_from_string_to_days_for_date() {
     let result = ExpirationDate::from_string_to_days("2099-12-31").unwrap();
@@ -136,6 +137,7 @@ fn test_from_string_to_days_for_date() {
     }
 }
 
+#[cfg(feature = "clock")]
 #[test]
 fn test_from_string_to_days_for_number() {
     let result = ExpirationDate::from_string_to_days("42.5").unwrap();

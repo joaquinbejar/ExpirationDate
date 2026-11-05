@@ -95,3 +95,6 @@ jobs:
 
       - name: Build
         run: make build
+
+      - name: Clock-free build
+        run: make test-no-clock
