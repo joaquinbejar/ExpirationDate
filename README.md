@@ -285,7 +285,6 @@ If you have any questions, issues, or would like to provide feedback, please fee
 
 
 ### **Contact Information**
-
 - **Author**: Joaquín Béjar García
 - **Email**: jb@taunais.com
 - **Telegram**: [@joaquin_bejar](https://t.me/joaquin_bejar)
@@ -307,13 +306,13 @@ Repositories by the same author that this project depends on, and repositories t
 
 | Repository | Description |
 |------------|-------------|
-| [positive](https://github.com/joaquinbejar/positive) · [crates.io](https://crates.io/crates/positive) | Type-safe wrapper for guaranteed non-negative Decimal values. |
+| [positive](https://github.com/joaquinbejar/positive) | Provides the `Positive` type used for day counts and year fractions. |
 
 ### Used by
 
 | Repository | Description |
 |------------|-------------|
-| [option_type](https://github.com/joaquinbejar/option_type) · [crates.io](https://crates.io/crates/option_type) | Enum-based classification of vanilla and exotic option contracts. |
-| [OptionStratLib](https://github.com/joaquinbejar/OptionStratLib) · [crates.io](https://crates.io/crates/optionstratlib) | Options pricing, Greeks, strategies and simulation library. |
+| [OptionStratLib](https://github.com/joaquinbejar/OptionStratLib) | Options trading and strategy library; uses ExpirationDate for every option's expiry. |
+| [option_type](https://github.com/joaquinbejar/option_type) | Enum-based classification of vanilla and exotic options; uses ExpirationDate for option expiries. |
 
 <!-- related-projects:end -->
